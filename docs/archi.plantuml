@@ -1,0 +1,179 @@
+﻿@startuml
+
+skinparam classAttributeIconSize 0
+
+title Simulation Multi-Physique + IA (Architecture Finale)
+
+' =====================
+' COULEURS
+' =====================
+skinparam class {
+    BackgroundColor<<Monde>> LightGreen
+    BackgroundColor<<Composant>> AliceBlue
+    BackgroundColor<<Systeme>> DeepSkyBlue
+    BackgroundColor<<Electro>> DeepSkyBlue
+    BackgroundColor<<Controle>> LightGreen
+    BackgroundColor<<IA>> Red
+}
+
+' =====================
+' MONDE / MODEL
+' =====================
+
+package "Monde" #LightGreen {
+    class Monde <<Monde>> {
+        entites : List
+        systemes : List
+        update(dt)
+    }
+
+    class Entite <<Monde>> {
+        id : int
+        composants : Dict
+        ajouter_composant()
+        get()
+        a()
+    }
+}
+
+Monde --> Entite
+
+' =====================
+' COMPOSANTS
+' =====================
+
+class Position <<Composant>> {
+    x
+    y
+    z
+}
+
+class Vitesse <<Composant>> {
+    vx
+    vy
+    vz
+}
+
+class Force <<Composant>> {
+    fx
+    fy
+    fz
+}
+
+class Masse <<Composant>> {
+    valeur
+}
+
+class Moteur <<Composant>> {
+    puissance_max
+    thrust
+    orientation
+}
+
+class Radar <<Composant>> {
+    puissance
+    gain
+    frequence
+    seuil
+}
+
+Entite --> Position
+Entite --> Vitesse
+Entite --> Force
+Entite --> Masse
+Entite --> Moteur
+Entite --> Radar
+
+' =====================
+' SYSTEMES (PAR DOMAINE)
+' =====================
+
+package "Systemes" #DeepSkyBlue {
+    class SystemePhysique_Propulsion <<Systeme>> {
+        update(monde, dt)
+    }
+
+    class SystemePhysique_Aerodynamique <<Systeme>> {
+        update(monde, dt)
+    }
+
+    class SystemePhysique_Mouvement <<Systeme>> {
+        update(monde, dt)
+    }
+
+    class SystemePhysique_Electromagnetique <<Electro>> {
+        calcul_signal()
+        calcul_snr()
+        detecter()
+        update(monde, dt)
+    }
+}
+
+Monde --> SystemePhysique_Propulsion
+Monde --> SystemePhysique_Aerodynamique
+Monde --> SystemePhysique_Mouvement
+Monde --> SystemePhysique_Electromagnetique
+
+' =====================
+' FLUX INDIRECT (IMPORTANT)
+' =====================
+
+SystemePhysique_Propulsion --> Force : "ajoute"
+SystemePhysique_Aerodynamique --> Force : "ajoute"
+
+Force --> SystemePhysique_Mouvement : "utilisé"
+
+SystemePhysique_Mouvement --> Vitesse : "update"
+Vitesse --> Position : "update"
+
+SystemePhysique_Electromagnetique --> Position : "lit"
+SystemePhysique_Electromagnetique --> Radar : "lit"
+
+' =====================
+' SIMULATION / ENVIRONNEMENT
+' =====================
+
+package "Simulation et Environnement" #LightGreen {
+    class Simulation <<Controle>> {
+        monde : Monde
+        temps_courant : float
+        temps_max : float
+        en_cours : bool
+        step(dt)
+        reset()
+        est_terminee()
+    }
+
+    class Environnement <<Controle>> {
+        simulation : Simulation
+        agent_id : int
+        reset()
+        step(action)
+        get_observation()
+        compute_reward()
+    }
+}
+
+class "rendre.py" as RendrePy <<Controle>> {
+    main()
+}
+
+Simulation --> Monde
+Environnement --> Simulation
+RendrePy --> Monde
+RendrePy --> Environnement
+
+' =====================
+' IA
+' =====================
+
+class AgentIA <<IA>> {
+    act(observation)
+    learn()
+}
+
+AgentIA --> Environnement : "action"
+Environnement --> AgentIA : "observation, reward"
+RendrePy --> AgentIA
+
+@enduml
