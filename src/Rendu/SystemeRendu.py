@@ -1,10 +1,7 @@
 ﻿from __future__ import annotations
 
-import pygame
-
 from src.Composant.Position import Position
 from src.Composant.Renderable import Renderable
-from src.Config import Config
 from src.Monde.Monde import Monde
 
 
@@ -18,7 +15,7 @@ class SystemeRendu:
         if not self.renderer.initialise:
             self.renderer.initialiser()
 
-        self.renderer.draw_sky()
+        self.renderer.clear()
 
         for entite in monde.entites:
             position = entite.get(Position)
@@ -37,5 +34,4 @@ class SystemeRendu:
         if self.overlay is not None:
             self.overlay(self.renderer, monde)
 
-        pygame.display.flip()
-        self.renderer.clock.tick(Config.fps)
+        self.renderer.display()

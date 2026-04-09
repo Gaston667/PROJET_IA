@@ -1,102 +1,88 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import math
 
 from src.Config import Config
+from src.Rendu.Point3D import Point3D
 
 
 class Camera:
     def __init__(
         self,
+        largeur: int = 800,
+        hauteur: int = 600,
         x: float = 0.0,
         y: float = 0.0,
         z: float = -10.0,
         yaw: float = 0.0,
         pitch: float = 0.0,
+        fov: float = 90.0,
     ) -> None:
-        self.x = x
-        self.y = y
-        self.z = z
+        self.position = Point3D(x, y, z)
         self.yaw = yaw
         self.pitch = pitch
-        self.pixels_par_metre = Config.pixels_par_metre
+        self.largeur = largeur
+        self.hauteur = hauteur
+        self.cx = largeur / 2
+        self.cy = hauteur / 2
+        self.plan_proche = 0.1
+        self.plan_loin = 1000.0
+        self.fov = fov
+        self.cos_yaw = 0.0
+        self.sin_yaw = 0.0
+        self.cos_pitch = 0.0
+        self.sin_pitch = 0.0
+        self.distance_projection = 0.0
+
+        self.update_cache()
+        self.update_distance_projection()
+
+    def redimensionner(self, largeur: int, hauteur: int) -> None:
+        self.largeur = largeur
+        self.hauteur = hauteur
+        self.cx = largeur / 2
+        self.cy = hauteur / 2
+        self.update_distance_projection()
 
     def deplacer(self, dx: float = 0.0, dy: float = 0.0, dz: float = 0.0) -> None:
-        self.x += dx
-        self.y += dy
-        self.z += dz
+        self.position.deplacer(dx, dy, dz)
 
-        
-
-    def position(self) -> tuple[float, float, float]:
-        return (self.x, self.y, self.z)
-
-    # On limite le pitch pour eviter que la camera se retourne completement.
     def orienter(self, delta_yaw: float = 0.0, delta_pitch: float = 0.0) -> None:
         self.yaw += delta_yaw
-        self.pitch += delta_pitch
-        self.pitch = max(-89.0, min(89.0, self.pitch))
+        self.pitch = max(-89.0, min(89.0, self.pitch + delta_pitch))
+        self.update_cache()
 
-    # Le vecteur avant est la direction dans laquelle la camera regarde.
-    def vecteur_avant(self) -> tuple[float, float, float]:
-        yaw_rad = math.radians(self.yaw)
-        pitch_rad = math.radians(self.pitch)
-        cos_pitch = math.cos(pitch_rad)
-        return (
-            math.sin(yaw_rad) * cos_pitch,
-            math.sin(pitch_rad),
-            math.cos(yaw_rad) * cos_pitch,
+    def set_orientation(self, yaw: float, pitch: float) -> None:
+        self.yaw = yaw
+        self.pitch = max(-89.0, min(89.0, pitch))
+        self.update_cache()
+
+    def vecteur_avant(self) -> Point3D:
+        return Point3D(
+            self.sin_yaw * self.cos_pitch,
+            self.sin_pitch,
+            self.cos_yaw * self.cos_pitch,
         )
 
-    # Le vecteur de droite est perpendiculaire au vecteur avant et au vecteur up (0, 1, 0).
-    def vecteur_droite(self) -> tuple[float, float, float]:
-        yaw_rad = math.radians(self.yaw)
-        return (
-            math.cos(yaw_rad),
-            0.0,
-            -math.sin(yaw_rad),
-        )
+    def vecteur_droite(self) -> Point3D:
+        return Point3D(self.cos_yaw, 0.0, -self.sin_yaw)
 
-    # On exprime le point dans le repere local de la camera avant la projection.
-    def vers_camera(self, x: float, y: float, z: float) -> tuple[float, float, float]:
-        dx = x - self.x
-        dy = y - self.y
-        dz = z - self.z
-
+    def update_cache(self) -> None:
         yaw_rad = math.radians(self.yaw)
         pitch_rad = math.radians(self.pitch)
-        cos_yaw = math.cos(yaw_rad)
-        sin_yaw = math.sin(yaw_rad)
-        cos_pitch = math.cos(pitch_rad)
-        sin_pitch = math.sin(pitch_rad)
+        self.cos_yaw = math.cos(yaw_rad)
+        self.sin_yaw = math.sin(yaw_rad)
+        self.cos_pitch = math.cos(pitch_rad)
+        self.sin_pitch = math.sin(pitch_rad)
 
-        # On exprime le point dans le repere local de la camera avant la projection.
-        x_camera = cos_yaw * dx - sin_yaw * dz
-        z_apres_yaw = sin_yaw * dx + cos_yaw * dz
-        y_camera = cos_pitch * dy - sin_pitch * z_apres_yaw
-        z_camera = sin_pitch * dy + cos_pitch * z_apres_yaw
-        return (x_camera, y_camera, z_camera)
+    def update_distance_projection(self) -> None:
+        fov_rad = math.radians(self.fov)
+        self.distance_projection = self.hauteur / (2 * math.tan(fov_rad / 2))
 
-    # On projette le point dans le plan de projection pour obtenir les coordonnees ecran.
-    def projeter_camera(
-        self,
-        x_camera: float,
-        y_camera: float,
-        z_camera: float,
-        largeur_ecran: int,
-        hauteur_ecran: int,
-        distance_projection: float,
-    ) -> tuple[int, int] | None:
-        if z_camera <= 0:
-            return None
+    def project(self, point: Point3D) -> Point3D | None:
+        point_transforme = self.vers_camera(point)
+        return self.projeter(point_transforme)
 
-        # Plus z_camera est grand, plus l'objet parait loin donc petit.
-        facteur = distance_projection / z_camera
-        x_ecran = int(largeur_ecran / 2 + x_camera * facteur)
-        y_ecran = int(hauteur_ecran / 2 - y_camera * facteur)
-        return (x_ecran, y_ecran)
-
-    # Cette methode combine les deux et peut etre utilisee pour les objets statiques sans orientation.
     def conversion(
         self,
         x: float,
@@ -105,25 +91,57 @@ class Camera:
         largeur_ecran: int,
         hauteur_ecran: int,
         distance_projection: float | None = None,
-    ) -> tuple[int, int] | None:
+    ) -> Point3D | None:
         if distance_projection is None:
-            x_ecran = int(largeur_ecran / 2 + (x - self.x) * self.pixels_par_metre)
-            y_ecran = int(hauteur_ecran / 2 - (y - self.y) * self.pixels_par_metre)
-            return (x_ecran, y_ecran)
+            x_screen = int(largeur_ecran / 2 + (x - self.position.x) * Config.pixels_par_metre)
+            y_screen = int(hauteur_ecran / 2 - (y - self.position.y) * Config.pixels_par_metre)
+            return Point3D(x_screen, y_screen, z)
 
-        x_camera, y_camera, z_camera = self.vers_camera(x, y, z)
-        return self.projeter_camera(
-            x_camera,
-            y_camera,
-            z_camera,
-            largeur_ecran,
-            hauteur_ecran,
-            distance_projection,
-        )
+        point_camera = self.vers_camera(Point3D(x, y, z))
+        if point_camera.z <= self.plan_proche or point_camera.z >= self.plan_loin:
+            return None
+
+        facteur_projection = distance_projection / point_camera.z
+        x_screen = largeur_ecran / 2 + point_camera.x * facteur_projection
+        y_screen = hauteur_ecran / 2 - point_camera.y * facteur_projection
+        return Point3D(x_screen, y_screen, point_camera.z)
+
+    def vers_camera(self, point: Point3D) -> Point3D:
+        point_transforme = self.appliquer_translation(point)
+        point_transforme = self.rotation_yaw(point_transforme)
+        point_transforme = self.rotation_pitch(point_transforme)
+        return point_transforme
+
+    def projeter(self, point_transforme: Point3D) -> Point3D | None:
+        z = point_transforme.z
+        if z <= self.plan_proche or z >= self.plan_loin:
+            return None
+
+        facteur_projection = self.distance_projection / z
+        x_projete = point_transforme.x * facteur_projection
+        y_projete = point_transforme.y * facteur_projection
+        x_screen = self.cx + x_projete
+        y_screen = self.cy - y_projete
+        return Point3D(x_screen, y_screen, z)
+
+    def appliquer_translation(self, point: Point3D) -> Point3D:
+        return point.position_relative_a(self.position)
+
+    def appliquer_tranlation(self, point: Point3D) -> Point3D:
+        return self.appliquer_translation(point)
+
+    def rotation_yaw(self, point: Point3D) -> Point3D:
+        x1 = self.cos_yaw * point.x - self.sin_yaw * point.z
+        z1 = self.sin_yaw * point.x + self.cos_yaw * point.z
+        return Point3D(x1, point.y, z1)
+
+    def rotation_pitch(self, point: Point3D) -> Point3D:
+        y1 = self.cos_pitch * point.y - self.sin_pitch * point.z
+        z2 = self.sin_pitch * point.y + self.cos_pitch * point.z
+        return Point3D(point.x, y1, z2)
 
     def __str__(self) -> str:
         return (
-            f"Camera(x={self.x}, y={self.y}, z={self.z}, "
-            f"yaw={self.yaw}, pitch={self.pitch}, "
-            f"pixels_par_metre={self.pixels_par_metre})"
+            f"Camera(x={self.position.x:.2f}, y={self.position.y:.2f}, z={self.position.z:.2f}, "
+            f"yaw={self.yaw:.2f}, pitch={self.pitch:.2f}, distance_projection={self.distance_projection:.2f})"
         )
