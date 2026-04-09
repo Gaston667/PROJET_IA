@@ -17,8 +17,8 @@ class Render3D(Render):
         self.ecran = None
         self.clock = None
         self.camera = Camera(largeur, hauteur, x=20.0, y=18.0, z=-150.0)
-        self.vitesse_camera = 4.0
-        self.vitesse_camera_rapide = 9.0
+        self.vitesse_camera = 7.0
+        self.vitesse_camera_rapide = 12.0
         self.sensibilite_souris = 0.12
         self.souris_capturee = True
 
@@ -76,12 +76,12 @@ class Render3D(Render):
         if len(points) < 3:
             return
 
-        points_ecran = []
+        points_ecran: list[tuple[int, int]] = []
         for point in points:
-            point_ecran = camera.project(point)
-            if point_ecran is None:
+            projection = camera.project(point)
+            if projection is None:
                 return
-            points_ecran.append((int(point_ecran.x), int(point_ecran.y)))
+            points_ecran.append((int(projection.x), int(projection.y)))
 
         pygame.draw.polygon(self.ecran, couleur, points_ecran, largeur)
 
@@ -103,14 +103,35 @@ class Render3D(Render):
         if forme in ("polygon", "polygone", "quad", "triangle"):
             points = getattr(renderable, "points", None)
             if isinstance(points, (list, tuple)) and len(points) >= 3:
-                self.draw_polygon(
-                    [self._decaler_point(point, p) for p in points],
-                    camera,
-                    couleur,
-                )
+                points_monde = [self._decaler_point(point, p) for p in points]
+                self.draw_polygon(points_monde, camera, couleur)
                 return
 
         self.draw_point(point, camera, couleur, getattr(renderable, "rayon", 6))
+
+    def draw_sol(self, camera: Camera) -> None:
+        step = 20 # Taille des cases du sol
+        view = 400 # distance de rendu du sol
+
+        couleur_sol = (50, 50, 50)
+        start_x = int(self.camera.position.x // step) * step
+        start_z = int(self.camera.position.z // step) * step
+
+        for x in range(start_x - view, start_x + view + step, step):
+            for z in range(start_z - view, start_z + view + step, step):
+                # generer les 4 points de la case
+                points_3d = self._generer_case(x, z, step)
+
+                #desinner la case
+                self.draw_polygon(points_3d, camera, couleur_sol)
+
+    def _generer_case(self, x: int, z: int, taille: int = 10) -> list[Point3D]:
+        return [
+            Point3D(x, 0, z),
+            Point3D(x + taille, 0, z),
+            Point3D(x + taille, 0, z + taille),
+            Point3D(x, 0, z + taille),
+        ]
 
     def display(self) -> None:
         pygame.display.flip()
