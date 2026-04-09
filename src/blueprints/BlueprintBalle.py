@@ -14,3 +14,5 @@ class BlueprintBalle:
     MASSE = 1.0
     RESTITUTION = 0.75
     FRICTION = 0.15
+
+    FORME = "cercle"

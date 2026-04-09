@@ -10,6 +10,8 @@ class BlueprintSol:
     NZ = 0.0
     OFFSET = 0.0
 
-    # Matériau
+    # Materiau
     RESTITUTION = 0.55
     FRICTION = 0.65
+
+    FORME = None

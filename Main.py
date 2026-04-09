@@ -1,4 +1,4 @@
-﻿from src.Composant import ColliderPlane
+from src.Composant import ColliderPlane
 from time import perf_counter
 
 from src.Composant.Force import Force
@@ -46,7 +46,7 @@ def creer_balle() -> Entite:
     renderable = Renderable(
         couleur=(0, 0, 255),
         visible=True,
-        forme="cercle",
+        forme=blueprint.FORME,
     )
 
     balle.ajouter_composant(position)
@@ -82,7 +82,7 @@ def creer_plan() -> Entite:
     renderable = Renderable(
         couleur=(90, 180, 90),
         visible=False,
-        forme=None,
+        forme=blueprint.FORME,
     )
 
     plan.ajouter_composant(position)
@@ -120,7 +120,7 @@ def creer_balle2() -> Entite:
     renderable = Renderable(
         couleur=(90, 180, 90),
         visible=True,
-        forme="cercle",
+        forme=blueprint.FORME,
     )
 
     balle.ajouter_composant(position)
@@ -160,7 +160,7 @@ def creer_balle4() -> Entite:
     renderable = Renderable(
         couleur=(255, 255, 0),
         visible=True,
-        forme="cercle",
+        forme=blueprint.FORME,
     )
 
     balle.ajouter_composant(position)

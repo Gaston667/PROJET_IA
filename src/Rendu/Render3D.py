@@ -18,8 +18,8 @@ class Render3D(Render):
         self.ecran = None
         self.clock = None
         self.camera = Camera(largeur, hauteur, x=20.0, y=18.0, z=-150.0)
-        self.vitesse_camera = 7.0
-        self.vitesse_camera_rapide = 12.0
+        self.vitesse_camera = 12.0
+        self.vitesse_camera_rapide = 17.0
         self.sensibilite_souris = 0.12
         self.souris_capturee = True
 
@@ -88,13 +88,13 @@ class Render3D(Render):
         if len(points) < 3:
             return
         
-        points = [int(p.x)]
-
-        pygame.draw.polygon(self.ecran, couleur, points, largeur)
+        points_ecran = [(int(p.x), int(p.y)) for p in points]
+        pygame.draw.polygon(self.ecran, couleur, points_ecran, largeur)
 
     def draw_entity(self, renderable, camera: Camera, point: Point3D) -> None:
         couleur = getattr(renderable, "couleur", (255, 255, 255))
         forme = getattr(renderable, "forme", None)
+        rayon = getattr(renderable, "rayon", 6)
 
         if forme in ("line", "ligne"):
             points = getattr(renderable, "points", None)
@@ -104,7 +104,7 @@ class Render3D(Render):
                 self.draw_line(p1,p2,camera,couleur)
                 return
             
-
+            
         if forme in ("polygon", "quad", "triangle"):
             points = getattr(renderable, "points", None)
             if isinstance(points, (list, tuple)) and len(points) >= 3:
@@ -114,7 +114,11 @@ class Render3D(Render):
                     self.draw_polygon(points_2d, couleur)
                 return
 
-        self.draw_point(point, camera, couleur)
+        if forme in ("cercle", "circle", "point", None):
+            self.draw_point(point, camera, couleur, rayon)
+            return
+
+        self.draw_point(point, camera, couleur, rayon)
 
     def draw_sol(self, camera: Camera) -> None:
         step = 20 # Taille des cases du sol
@@ -144,7 +148,7 @@ class Render3D(Render):
                 color_sol  = (shade//2, shade, shade//2)
 
                 #desinner la case
-                self.draw_polygon(points_3d, color_sol)
+                self.draw_polygon(points_2d, color_sol)
 
     def _generer_case(self, x: int, z: int, taille: int = 10) -> list[Point3D]:
         return [
