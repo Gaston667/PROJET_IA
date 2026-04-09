@@ -2,7 +2,6 @@
 
 import pygame
 
-from src.Composant.Position import Position
 from src.Config import Config
 from src.Rendu.Camera import Camera
 from src.Rendu.Point3D import Point3D
@@ -32,9 +31,9 @@ class Render2D(Render):
     def clear(self, couleur: tuple[int, int, int] = (255, 255, 255)) -> None:
         self.ecran.fill(couleur)
 
-    def draw_entity(self, renderable, camera: Camera, position: Position) -> None:
+    def draw_entity(self, renderable, camera: Camera, point: Point3D) -> None:
         couleur = getattr(renderable, "couleur", (0, 0, 255))
-        projection = camera.conversion(position.x, position.y, position.z, self.largeur, self.hauteur)
+        projection = camera.conversion(point.x, point.y, point.z, self.largeur, self.hauteur)
         if projection is None:
             return
 

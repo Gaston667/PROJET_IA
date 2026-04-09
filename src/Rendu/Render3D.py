@@ -2,7 +2,6 @@
 
 import pygame
 
-from src.Composant.Position import Position
 from src.Config import Config
 from src.Rendu.Camera import Camera
 from src.Rendu.Point3D import Point3D
@@ -86,10 +85,9 @@ class Render3D(Render):
 
         pygame.draw.polygon(self.ecran, couleur, points_ecran, largeur)
 
-    def draw_entity(self, renderable, camera: Camera, position: Position) -> None:
+    def draw_entity(self, renderable, camera: Camera, point: Point3D) -> None:
         couleur = getattr(renderable, "couleur", (255, 255, 255))
         forme = getattr(renderable, "forme", None)
-        point = Point3D(position.x, position.y, position.z)
 
         if forme in ("line", "ligne"):
             points = getattr(renderable, "points", None)

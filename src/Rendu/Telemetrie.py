@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tkinter as tk
 
@@ -8,6 +8,7 @@ from src.Composant.Position import Position
 from src.Composant.Vitesse import Vitesse
 from src.Config import Config
 from src.Monde.Monde import Monde
+from src.Rendu.Point3D import Point3D
 
 
 def _telemetrie_lignes(
@@ -30,7 +31,7 @@ def _telemetrie_lignes(
         lignes.append("")
         lignes.append(
             "Camera: "
-            f"x={rendu.camera.x:.2f} y={rendu.camera.y:.2f} z={rendu.camera.z:.2f}"
+            f"x={rendu.camera.position.x:.2f} y={rendu.camera.position.y:.2f} z={rendu.camera.position.z:.2f}"
         )
         if hasattr(rendu.camera, "yaw") and hasattr(rendu.camera, "pitch"):
             lignes.append(
@@ -45,12 +46,13 @@ def _telemetrie_lignes(
         masse = entite.get(Masse)
 
         lignes.append(f"Entite {entite.id}")
-        lignes.append(
-            "  Pos: "
-            f"x={position.x:.2f} y={position.y:.2f} z={position.z:.2f}"
-            if position is not None
-            else "  Pos: n/a"
-        )
+        if position is not None:
+            point = Point3D(position.x, position.y, position.z)
+            lignes.append(
+                f"  Pos: x={point.x:.2f} y={point.y:.2f} z={point.z:.2f}"
+            )
+        else:
+            lignes.append("  Pos: n/a")
         lignes.append(
             "  Vit: "
             f"vx={vitesse.vx:.2f} vy={vitesse.vy:.2f} vz={vitesse.vz:.2f}"

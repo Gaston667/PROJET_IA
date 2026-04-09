@@ -1,8 +1,11 @@
 ﻿from __future__ import annotations
 
+import pygame
+
 from src.Composant.Position import Position
 from src.Composant.Renderable import Renderable
 from src.Monde.Monde import Monde
+from src.Rendu.Point3D import Point3D
 
 
 class SystemeRendu:
@@ -29,7 +32,8 @@ class SystemeRendu:
             if renderable is not None and not renderable.visible:
                 continue
 
-            self.renderer.draw_entity(renderable, self.camera, position)
+            point = Point3D(position.x, position.y, position.z)
+            self.renderer.draw_entity(renderable, self.camera, point)
 
         if self.overlay is not None:
             self.overlay(self.renderer, monde)
