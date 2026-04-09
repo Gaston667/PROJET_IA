@@ -20,17 +20,20 @@ class SystemeRendu:
 
         self.renderer.clear()
 
+        # Dessiner le sol 
+        self.renderer.draw_sol(self.renderer.camera)
+
+        # Dessiner les objets
         for entite in monde.entites:
-            position = entite.get(Position)
-            if position is None:
-                position = getattr(entite, "position", None)
-
-            if position is None:
-                continue
-
             renderable = entite.get(Renderable)
-            if renderable is not None and not renderable.visible:
+            position = entite.get(Position)
+            
+            if position and renderable is None:
                 continue
+
+            if not renderable.visible:
+                continue
+
 
             point = Point3D(position.x, position.y, position.z)
             self.renderer.draw_entity(renderable, self.camera, point)

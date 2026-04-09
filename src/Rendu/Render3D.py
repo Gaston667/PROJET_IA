@@ -6,6 +6,7 @@ from src.Config import Config
 from src.Rendu.Camera import Camera
 from src.Rendu.Point3D import Point3D
 from src.Rendu.Render import Render
+import math
 
 
 class Render3D(Render):
@@ -38,6 +39,18 @@ class Render3D(Render):
     def clear(self, couleur: tuple[int, int, int] = (135, 206, 235)) -> None:
         self.ecran.fill(couleur)
 
+    def _project_points(self, points_3d, camera):
+        points_2d = []
+
+        for p in points_3d:
+            projetee = camera.project(p)
+
+            if projetee is None:
+                return None
+            points_2d.append(projetee)
+
+        return points_2d
+
     def draw_point(self, point: Point3D, camera: Camera, couleur: tuple[int, int, int] = (255, 255, 255), rayon: int = 4) -> None:
         point_ecran = camera.project(point)
         if point_ecran is None:
@@ -69,21 +82,15 @@ class Render3D(Render):
     def draw_polygon(
         self,
         points: list[Point3D],
-        camera: Camera,
         couleur: tuple[int, int, int] = (255, 255, 255),
         largeur: int = 0,
     ) -> None:
         if len(points) < 3:
             return
+        
+        points = [int(p.x)]
 
-        points_ecran: list[tuple[int, int]] = []
-        for point in points:
-            projection = camera.project(point)
-            if projection is None:
-                return
-            points_ecran.append((int(projection.x), int(projection.y)))
-
-        pygame.draw.polygon(self.ecran, couleur, points_ecran, largeur)
+        pygame.draw.polygon(self.ecran, couleur, points, largeur)
 
     def draw_entity(self, renderable, camera: Camera, point: Point3D) -> None:
         couleur = getattr(renderable, "couleur", (255, 255, 255))
@@ -92,22 +99,22 @@ class Render3D(Render):
         if forme in ("line", "ligne"):
             points = getattr(renderable, "points", None)
             if isinstance(points, (list, tuple)) and len(points) >= 2:
-                self.draw_line(
-                    self._decaler_point(point, points[0]),
-                    self._decaler_point(point, points[1]),
-                    camera,
-                    couleur,
-                )
+                p1 = self._decaler_point(point, points[0])
+                p2 = self._decaler_point(point, points[1])
+                self.draw_line(p1,p2,camera,couleur)
                 return
+            
 
-        if forme in ("polygon", "polygone", "quad", "triangle"):
+        if forme in ("polygon", "quad", "triangle"):
             points = getattr(renderable, "points", None)
             if isinstance(points, (list, tuple)) and len(points) >= 3:
-                points_monde = [self._decaler_point(point, p) for p in points]
-                self.draw_polygon(points_monde, camera, couleur)
+                points_3d = [self._decaler_point(point, p) for p in points]
+                points_2d = self._project_points(points_3d, camera)
+                if points_2d:
+                    self.draw_polygon(points_2d, couleur)
                 return
 
-        self.draw_point(point, camera, couleur, getattr(renderable, "rayon", 6))
+        self.draw_point(point, camera, couleur)
 
     def draw_sol(self, camera: Camera) -> None:
         step = 20 # Taille des cases du sol
@@ -122,8 +129,22 @@ class Render3D(Render):
                 # generer les 4 points de la case
                 points_3d = self._generer_case(x, z, step)
 
+                points_2d = self._project_points(points_3d, camera)
+                if points_2d is None:
+                    continue
+
+                # shading simple
+                dx = x - camera.position.x
+                dz = z - camera.position.z
+                dist = math.sqrt(abs(dx*dx + dz*dz))
+                shade = max(40, 180 - int(dist * 0.3))
+                # ajout d'une variation(effet damier) pour un peu de textture 
+                if (x // step + z // step) % 2 == 0:
+                    shade -= 10
+                color_sol  = (shade//2, shade, shade//2)
+
                 #desinner la case
-                self.draw_polygon(points_3d, camera, couleur_sol)
+                self.draw_polygon(points_3d, color_sol)
 
     def _generer_case(self, x: int, z: int, taille: int = 10) -> list[Point3D]:
         return [
