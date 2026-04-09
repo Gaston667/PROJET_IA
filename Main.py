@@ -190,7 +190,7 @@ def main() -> None:
 
     simulation = Simulation(monde)
     #rendu = Render2D(800, 600, "Test balle")
-    rendu = Render3D(800, 600, "Test balle 3D")
+    rendu = Render3D(900, 700, "Test balle 3D")
     systeme_rendu = SystemeRendu(rendu)
     telemetrie = FenetreTelemetrie()
 

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import pygame
 
@@ -17,8 +17,8 @@ class Render3D(Render):
         self.ecran = None
         self.clock = None
         self.camera = Camera(largeur, hauteur, x=20.0, y=18.0, z=-150.0)
-        self.vitesse_camera = 2.0
-        self.vitesse_camera_rapide = 6.0
+        self.vitesse_camera = 4.0
+        self.vitesse_camera_rapide = 9.0
         self.sensibilite_souris = 0.12
         self.souris_capturee = True
 
@@ -161,7 +161,9 @@ class Render3D(Render):
 
     def _gerer_deplacement_camera(self) -> None:
         touches = pygame.key.get_pressed()
-        vitesse = self.vitesse_camera_rapide if touches[pygame.K_LSHIFT] or touches[pygame.K_RSHIFT] else self.vitesse_camera
+        dt = (self.clock.get_time() / 1000.0) if self.clock is not None else (1.0 / max(1, Config.fps))
+        vitesse_base = self.vitesse_camera_rapide if touches[pygame.K_LSHIFT] or touches[pygame.K_RSHIFT] else self.vitesse_camera
+        vitesse = vitesse_base * dt
 
         dx = 0.0
         dy = 0.0
