@@ -1,6 +1,6 @@
 class BlueprintBalle:
     POSITION_X = 4.0
-    POSITION_Y = 10.0
+    POSITION_Y = 100.0
     POSITION_Z = -3.0
 
     VITESSE_X = 0.0

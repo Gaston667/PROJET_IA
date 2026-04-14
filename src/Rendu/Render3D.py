@@ -51,12 +51,22 @@ class Render3D(Render):
 
         return points_2d
 
-    def draw_point(self, point: Point3D, camera: Camera, couleur: tuple[int, int, int] = (255, 255, 255), rayon: int = 4) -> None:
-        point_ecran = camera.project(point)
-        if point_ecran is None:
+    def draw_point(self, point: Point3D, camera: Camera, couleur: tuple[int, int, int] = (255, 255, 255), rayon: float = 0.2) -> None:
+        #projection
+        projection = camera.project(point)
+        if projection is None:
             return
+        
+        
+        #facteur de perspective pour donner une impression de profondeur
+        facteur_perspective = camera.distance_projection / projection.z
+        
+        # taille a l'ecran en fonction de la distance
+        rayon_ecran = rayon * facteur_perspective
+        # clamper la taille pour eviter les points trop gros ou trop petits
+        rayon_ecran = max(1, min(1000, int(rayon_ecran)))
 
-        pygame.draw.circle(self.ecran, couleur, (int(point_ecran.x), int(point_ecran.y)), rayon)
+        pygame.draw.circle(self.ecran, couleur, (int(projection.x), int(projection.y)), rayon_ecran)
 
     def draw_line(
         self,
@@ -124,7 +134,6 @@ class Render3D(Render):
         step = 20 # Taille des cases du sol
         view = 400 # distance de rendu du sol
 
-        couleur_sol = (50, 50, 50)
         start_x = int(self.camera.position.x // step) * step
         start_z = int(self.camera.position.z // step) * step
 

@@ -11,9 +11,9 @@ class Camera:
         self,
         largeur: int = 800,
         hauteur: int = 600,
-        x: float = 0.0,
-        y: float = 0.0,
-        z: float = -10.0,
+        x: float = -90.0,
+        y: float = 20.0,
+        z: float = -20.0,
         yaw: float = 0.0,
         pitch: float = 0.0,
         fov: float = 90.0,
@@ -82,29 +82,6 @@ class Camera:
     def project(self, point: Point3D) -> Point3D | None:
         point_transforme = self.vers_camera(point)
         return self.projeter(point_transforme)
-
-    def conversion(
-        self,
-        x: float,
-        y: float,
-        z: float,
-        largeur_ecran: int,
-        hauteur_ecran: int,
-        distance_projection: float | None = None,
-    ) -> Point3D | None:
-        if distance_projection is None:
-            x_screen = int(largeur_ecran / 2 + (x - self.position.x) * Config.pixels_par_metre)
-            y_screen = int(hauteur_ecran / 2 - (y - self.position.y) * Config.pixels_par_metre)
-            return Point3D(x_screen, y_screen, z)
-
-        point_camera = self.vers_camera(Point3D(x, y, z))
-        if point_camera.z <= self.plan_proche or point_camera.z >= self.plan_loin:
-            return None
-
-        facteur_projection = distance_projection / point_camera.z
-        x_screen = largeur_ecran / 2 + point_camera.x * facteur_projection
-        y_screen = hauteur_ecran / 2 - point_camera.y * facteur_projection
-        return Point3D(x_screen, y_screen, point_camera.z)
 
     def vers_camera(self, point: Point3D) -> Point3D:
         point_transforme = self.appliquer_translation(point)

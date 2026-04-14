@@ -13,6 +13,7 @@ from src.Monde.Entite import Entite
 from src.Monde.Monde import Monde
 from src.Rendu.Render2D import Render2D
 from src.Rendu.Render3D import Render3D
+from src.Rendu.Point3D import Point3D
 from src.Rendu.SystemeRendu import SystemeRendu
 from src.Rendu.Telemetrie import FenetreTelemetrie
 from src.Systeme.SystemePhysique_Collision import SystemePhysique_Collision
@@ -176,6 +177,68 @@ def creer_balle4() -> Entite:
 
     return balle
 
+def creer_balle_lourde() -> Entite:
+    balle = Entite()
+    blueprint = Bp.BlueprintBalleLourde
+
+    position = Position(
+        blueprint.POSITION_X,
+        blueprint.POSITION_Y,
+        blueprint.POSITION_Z,
+    )
+    vitesse = Vitesse(
+        blueprint.VITESSE_X,
+        blueprint.VITESSE_Y,
+        blueprint.VITESSE_Z,
+    )
+    force = Force(
+        blueprint.FORCE_X,
+        blueprint.FORCE_Y,
+        blueprint.FORCE_Z,
+    )
+    masse = Masse(blueprint.MASSE)
+    materiau = Materiau(blueprint.RESTITUTION, blueprint.FRICTION)
+    renderable = Renderable(
+        couleur=(200, 80, 50),
+        visible=True,
+        forme=blueprint.FORME,
+    )
+
+    balle.ajouter_composant(position)
+    balle.ajouter_composant(vitesse)
+    balle.ajouter_composant(force)
+    balle.ajouter_composant(masse)
+    balle.ajouter_composant(materiau)
+    balle.ajouter_composant(renderable)
+
+    balle.position = position
+    balle.materiau = materiau
+    balle.renderable = renderable
+
+    return balle
+def creer_objet_demo() -> Entite:
+    objet = Entite()
+
+    position = Position(0.0, 2.0, 35.0)
+    renderable = Renderable(
+        couleur=(255, 120, 40),
+        visible=True,
+        forme="polygon",
+    )
+    renderable.points = [
+        Point3D(-4.0, 0.0, 0.0),
+        Point3D(4.0, 0.0, 0.0),
+        Point3D(3.0, 4.0, 6.0),
+        Point3D(-3.0, 4.0, 6.0),
+    ]
+
+    objet.ajouter_composant(position)
+    objet.ajouter_composant(renderable)
+
+    objet.position = position
+    objet.renderable = renderable
+
+    return objet
 
 def main() -> None:
     monde = Monde()
@@ -183,6 +246,8 @@ def main() -> None:
     monde.ajouter_entite(creer_plan())
     monde.ajouter_entite(creer_balle2())
     monde.ajouter_entite(creer_balle4())
+    monde.ajouter_entite(creer_balle_lourde())
+    monde.ajouter_entite(creer_objet_demo())
 
     monde.ajouter_systeme(SystemePhysique_Gravite())
     monde.ajouter_systeme(SystemePhysique_Mouvement())
