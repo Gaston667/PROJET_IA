@@ -1,4 +1,4 @@
-from src.Composant import ColliderPlane
+﻿from src.Composant import ColliderPlane
 from time import perf_counter
 
 from src.Composant.Force import Force
@@ -45,9 +45,10 @@ def creer_balle() -> Entite:
     masse = Masse(blueprint.MASSE)
     materiau = Materiau(blueprint.RESTITUTION, blueprint.FRICTION)
     renderable = Renderable(
-        couleur=(0, 0, 255),
+        couleur=blueprint.COULEUR,
         visible=True,
         forme=blueprint.FORME,
+        rayon=blueprint.RAYON,
     )
 
     balle.ajouter_composant(position)
@@ -81,7 +82,7 @@ def creer_plan() -> Entite:
     )
     materiau = Materiau(blueprint.RESTITUTION, blueprint.FRICTION)
     renderable = Renderable(
-        couleur=(90, 180, 90),
+        #couleur=bulletin.COULEUR, --- IGNORE --- calculer la couleur en fonction de la normale du plan pour faire un effet de damier
         visible=False,
         forme=blueprint.FORME,
     )
@@ -120,9 +121,10 @@ def creer_balle4() -> Entite:
     masse = Masse(blueprint.MASSE)
     materiau = Materiau(blueprint.RESTITUTION, blueprint.FRICTION)
     renderable = Renderable(
-        couleur=(255, 255, 0),
+        couleur=blueprint.COULEUR,
         visible=True,
         forme=blueprint.FORME,
+        rayon=blueprint.RAYON,
     )
 
     balle.ajouter_composant(position)
@@ -160,9 +162,10 @@ def creer_balle_lourde() -> Entite:
     masse = Masse(blueprint.MASSE)
     materiau = Materiau(blueprint.RESTITUTION, blueprint.FRICTION)
     renderable = Renderable(
-        couleur=(200, 80, 50),
+        couleur=blueprint.COULEUR,
         visible=True,
         forme=blueprint.FORME,
+        rayon=blueprint.RAYON,
     )
 
     balle.ajouter_composant(position)

@@ -16,3 +16,5 @@ class BlueprintBalleLourde:
     FRICTION = 0.4
 
     FORME = "cercle"
+    COULEUR = (255, 0, 0)
+    RAYON = 4.0

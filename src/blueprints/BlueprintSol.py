@@ -14,4 +14,6 @@ class BlueprintSol:
     RESTITUTION = 0.55
     FRICTION = 0.65
 
+    #COULEUR = (100, 100, 100)
+
     FORME = None
