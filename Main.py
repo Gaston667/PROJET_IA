@@ -97,45 +97,6 @@ def creer_plan() -> Entite:
 
     return plan
 
-def creer_balle2() -> Entite:
-    balle = Entite()
-    blueprint = Bp.BlueprintBalle2
-
-    position = Position(
-        blueprint.POSITION_X,
-        blueprint.POSITION_Y,
-        blueprint.POSITION_Z,
-    )
-    vitesse = Vitesse(
-        blueprint.VITESSE_X,
-        blueprint.VITESSE_Y,
-        blueprint.VITESSE_Z,
-    )
-    force = Force(
-        blueprint.FORCE_X,
-        blueprint.FORCE_Y,
-        blueprint.FORCE_Z,
-    )
-    masse = Masse(blueprint.MASSE)
-    materiau = Materiau(blueprint.RESTITUTION, blueprint.FRICTION)
-    renderable = Renderable(
-        couleur=(90, 180, 90),
-        visible=True,
-        forme=blueprint.FORME,
-    )
-
-    balle.ajouter_composant(position)
-    balle.ajouter_composant(vitesse)
-    balle.ajouter_composant(force)
-    balle.ajouter_composant(masse)
-    balle.ajouter_composant(materiau)
-    balle.ajouter_composant(renderable)
-
-    balle.position = position
-    balle.materiau = materiau
-    balle.renderable = renderable
-
-    return balle
 
 def creer_balle4() -> Entite:
     balle = Entite()
@@ -244,7 +205,6 @@ def main() -> None:
     monde = Monde()
     monde.ajouter_entite(creer_balle())
     monde.ajouter_entite(creer_plan())
-    monde.ajouter_entite(creer_balle2())
     monde.ajouter_entite(creer_balle4())
     monde.ajouter_entite(creer_balle_lourde())
     monde.ajouter_entite(creer_objet_demo())

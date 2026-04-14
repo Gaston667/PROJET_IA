@@ -1,6 +1,6 @@
 class BlueprintBalleLourde:
-    POSITION_X = 2.0
-    POSITION_Y = 15.0
+    POSITION_X = 7.0
+    POSITION_Y = 500.0
     POSITION_Z = 0.0
 
     VITESSE_X = 0.0
