@@ -23,6 +23,8 @@ class Render3D(Render):
         self.sensibilite_souris = 0.12
         self.souris_capturee = True
 
+
+    ### Fonctions d'initialisation, et de nettoyage ##
     def initialiser(self) -> None:
         if self.initialise:
             return
@@ -36,72 +38,19 @@ class Render3D(Render):
         self.camera.redimensionner(self.largeur, self.hauteur)
         self.initialise = True
 
-    def clear(self, couleur: tuple[int, int, int] = (135, 206, 235)) -> None:
+    def clear(self, couleur: tuple[int, int, int] = (130, 130, 130)) -> None:
         self.ecran.fill(couleur)
 
-    def _project_points(self, points_3d, camera):
-        points_2d = []
 
-        for p in points_3d:
-            projetee = camera.project(p)
 
-            if projetee is None:
-                return None
-            points_2d.append(projetee)
 
-        return points_2d
 
-    def draw_point(self, point: Point3D, camera: Camera, couleur: tuple[int, int, int] = (255, 255, 255), rayon: float = 0.2) -> None:
-        #projection
-        projection = camera.project(point)
-        if projection is None:
-            return
-        
-        
-        #facteur de perspective pour donner une impression de profondeur
-        facteur_perspective = camera.distance_projection / projection.z
-        
-        # taille a l'ecran en fonction de la distance
-        rayon_ecran = rayon * facteur_perspective
-        # clamper la taille pour eviter les points trop gros ou trop petits
-        rayon_ecran = max(1, min(1000, int(rayon_ecran)))
 
-        pygame.draw.circle(self.ecran, couleur, (int(projection.x), int(projection.y)), rayon_ecran)
 
-    def draw_line(
-        self,
-        point_debut: Point3D,
-        point_fin: Point3D,
-        camera: Camera,
-        couleur: tuple[int, int, int] = (255, 255, 255),
-        largeur: int = 1,
-    ) -> None:
-        debut = camera.project(point_debut)
-        fin = camera.project(point_fin)
-        if debut is None or fin is None:
-            return
 
-        pygame.draw.line(
-            self.ecran,
-            couleur,
-            (int(debut.x), int(debut.y)),
-            (int(fin.x), int(fin.y)),
-            largeur,
-        )
-
-    def draw_polygon(
-        self,
-        points: list[Point3D],
-        couleur: tuple[int, int, int] = (255, 255, 255),
-        largeur: int = 0,
-    ) -> None:
-        if len(points) < 3:
-            return
-        
-        points_ecran = [(int(p.x), int(p.y)) for p in points]
-        pygame.draw.polygon(self.ecran, couleur, points_ecran, largeur)
-
+    ## Fonctions de dessin pour les entités, les lignes, les polygones ##
     def draw_entity(self, renderable, camera: Camera, point: Point3D) -> None:
+        """    draw_entity() : Dessine une entité 3D en fonction de son composant Renderable, en projetant ses points à l'écran et en utilisant les paramètres de la caméra pour ajuster la taille et la position des éléments dessinés.    """
         couleur = getattr(renderable, "couleur", (255, 255, 255))
         forme = getattr(renderable, "forme", None)
         rayon = getattr(renderable, "rayon", 6)
@@ -130,7 +79,65 @@ class Render3D(Render):
 
         self.draw_point(point, camera, couleur, rayon)
 
+    def draw_line(
+        self,
+        point_debut: Point3D,
+        point_fin: Point3D,
+        camera: Camera,
+        couleur: tuple[int, int, int] = (255, 255, 255),
+        largeur: int = 1,
+    ) -> None:
+        """    Dessine une ligne entre deux points 3D projetés à l'écran, avec une épaisseur ajustée en fonction de la distance pour donner une impression de profondeur.    """
+        debut = camera.project(point_debut)
+        fin = camera.project(point_fin)
+        if debut is None or fin is None:
+            return
+
+        pygame.draw.line(
+            self.ecran,
+            couleur,
+            (int(debut.x), int(debut.y)),
+            (int(fin.x), int(fin.y)),
+            largeur,
+        )
+
+    def draw_polygon(
+        self,
+        points: list[Point3D],
+        couleur: tuple[int, int, int] = (255, 255, 255),
+        largeur: int = 0,
+    ) -> None:
+        """    Dessine un polygone défini par une liste de points 3D projetés à l'écran, avec une couleur et une épaisseur spécifiées.    """
+        if len(points) < 3:
+            return
+        
+        points_ecran = [(int(p.x), int(p.y)) for p in points]
+        pygame.draw.polygon(self.ecran, couleur, points_ecran, largeur)
+
+
+
+
+
+
+
+
+
+
+
+
+    ###### FOCNTIONS A LA GESTION DU SOL ######
+   
+    def _generer_case(self, x: int, z: int, taille: int = 10) -> list[Point3D]:
+        """    Génère les 4 points d'une case du sol à partir de ses coordonnées x et z, et de sa taille.    """
+        return [
+            Point3D(x, 0, z),
+            Point3D(x + taille, 0, z),
+            Point3D(x + taille, 0, z + taille),
+            Point3D(x, 0, z + taille),
+        ]
+    
     def draw_sol(self, camera: Camera) -> None:
+        """    Dessine un sol en damier en générant des cases autour de la position de la caméra, et en les projetant à l'écran.    """
         step = 20 # Taille des cases du sol
         view = 400 # distance de rendu du sol
 
@@ -159,53 +166,53 @@ class Render3D(Render):
                 #desinner la case
                 self.draw_polygon(points_2d, color_sol)
 
-    def _generer_case(self, x: int, z: int, taille: int = 10) -> list[Point3D]:
-        return [
-            Point3D(x, 0, z),
-            Point3D(x + taille, 0, z),
-            Point3D(x + taille, 0, z + taille),
-            Point3D(x, 0, z + taille),
-        ]
+    def draw_point(self, point: Point3D, camera: Camera, couleur: tuple[int, int, int] = (255, 255, 255), rayon: float = 0.2) -> None:
+        """    Dessine un point 3D projeté à l'écran, avec une taille ajustée en fonction de la distance pour donner une impression de profondeur.    """
+        #projection
+        projection = camera.project(point)
+        if projection is None:
+            return
+        
+        
+        #facteur de perspective pour donner une impression de profondeur
+        facteur_perspective = camera.distance_projection / projection.z
+        
+        # taille a l'ecran en fonction de la distance
+        rayon_ecran = rayon * facteur_perspective
+        # clamper la taille pour eviter les points trop gros ou trop petits
+        rayon_ecran = max(1, min(1000, int(rayon_ecran)))
 
-    def display(self) -> None:
-        pygame.display.flip()
-        if self.clock is not None:
-            self.clock.tick(Config.fps)
+        pygame.draw.circle(self.ecran, couleur, (int(projection.x), int(projection.y)), rayon_ecran)
 
-    def gerer_evenements(self) -> bool:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return False
-            if event.type == pygame.VIDEORESIZE:
-                self.largeur = event.w
-                self.hauteur = event.h
-                self.ecran = pygame.display.set_mode((self.largeur, self.hauteur), pygame.RESIZABLE)
-                self.camera.redimensionner(self.largeur, self.hauteur)
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                self.souris_capturee = not self.souris_capturee
-                pygame.mouse.set_visible(not self.souris_capturee)
-                pygame.event.set_grab(self.souris_capturee)
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self.souris_capturee:
-                self.souris_capturee = True
-                pygame.mouse.set_visible(False)
-                pygame.event.set_grab(True)
-            if event.type == pygame.MOUSEMOTION and self.souris_capturee:
-                self.camera.orienter(
-                    event.rel[0] * self.sensibilite_souris,
-                    -event.rel[1] * self.sensibilite_souris,
-                )
+   
 
-        self._gerer_deplacement_camera()
-        return True
 
-    def fermer(self) -> None:
-        if self.initialise:
-            pygame.quit()
-        self.initialise = False
-        self.ecran = None
-        self.clock = None
+
+
+
+
+
+
+
+
+
+    ## Fonctions de projection, de gestion des points 3D et de déplacement ##
+    """    Projette une liste de points 3D à l'écran en utilisant les paramètres de la caméra, et retourne une liste de points 2D correspondants.    """
+    def _project_points(self, points_3d, camera):
+        points_2d = []
+
+        for p in points_3d:
+            projetee = camera.project(p)
+
+            if projetee is None:
+                return None
+            points_2d.append(projetee)
+
+        return points_2d
+    
 
     def _decaler_point(self, origine: Point3D, offset) -> Point3D:
+        """    Décale un point 3D d'une origine en ajoutant un offset, qui peut être soit un autre Point3D, soit une liste ou un tuple de coordonnées.    """
         if isinstance(offset, Point3D):
             return Point3D(origine.x + offset.x, origine.y + offset.y, origine.z + offset.z)
 
@@ -213,8 +220,9 @@ class Render3D(Render):
             return Point3D(origine.x + offset[0], origine.y + offset[1], origine.z + offset[2])
 
         return origine.copy()
-
+    
     def _gerer_deplacement_camera(self) -> None:
+        """    Gère le déplacement de la caméra en fonction des touches du clavier, en ajustant la vitesse de déplacement en fonction du temps écoulé pour assurer une expérience fluide.    """
         touches = pygame.key.get_pressed()
         dt = (self.clock.get_time() / 1000.0) if self.clock is not None else (1.0 / max(1, Config.fps))
         vitesse_base = self.vitesse_camera_rapide if touches[pygame.K_LSHIFT] or touches[pygame.K_RSHIFT] else self.vitesse_camera
@@ -250,3 +258,46 @@ class Render3D(Render):
 
         if dx != 0.0 or dy != 0.0 or dz != 0.0:
             self.camera.deplacer(dx, dy, dz)
+    
+    def display(self) -> None:
+        """ display() : Met à jour l'affichage en appelant pygame.display.flip(), et limite le nombre de frames par seconde en utilisant self.clock.tick(Config.fps) pour assurer une expérience fluide.    """
+        pygame.display.flip()
+        if self.clock is not None:
+            self.clock.tick(Config.fps)
+    
+    def gerer_evenements(self) -> bool:
+        """    gerer_evenements() : Gère les événements de la fenêtre, tels que les mouvements de la souris pour orienter la caméra, les touches du clavier pour déplacer la caméra, et les événements de redimensionnement de la fenêtre. Retourne False si l'utilisateur souhaite fermer la fenêtre, sinon True.    """
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.VIDEORESIZE:
+                self.largeur = event.w
+                self.hauteur = event.h
+                self.ecran = pygame.display.set_mode((self.largeur, self.hauteur), pygame.RESIZABLE)
+                self.camera.redimensionner(self.largeur, self.hauteur)
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self.souris_capturee = not self.souris_capturee
+                pygame.mouse.set_visible(not self.souris_capturee)
+                pygame.event.set_grab(self.souris_capturee)
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self.souris_capturee:
+                self.souris_capturee = True
+                pygame.mouse.set_visible(False)
+                pygame.event.set_grab(True)
+            if event.type == pygame.MOUSEMOTION and self.souris_capturee:
+                self.camera.orienter(
+                    event.rel[0] * self.sensibilite_souris,
+                    -event.rel[1] * self.sensibilite_souris,
+                )
+
+        self._gerer_deplacement_camera()
+        return True
+
+    def fermer(self) -> None:
+        """    fermer() : Ferme la fenêtre et libère les ressources en appelant pygame.quit(), et réinitialise les attributs liés à l'affichage.    """
+        if self.initialise:
+            pygame.quit()
+        self.initialise = False
+        self.ecran = None
+        self.clock = None
+
+    

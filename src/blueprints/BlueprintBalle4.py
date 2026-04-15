@@ -11,6 +11,7 @@ class BlueprintBalle:
     FORCE_Y = 0.0
     FORCE_Z = 0.0
 
+    
     MASSE = 100.0
     RESTITUTION = 0.2
     FRICTION = 0.2
