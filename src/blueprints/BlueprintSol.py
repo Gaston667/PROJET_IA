@@ -1,3 +1,5 @@
+from src.Composant.Renderable import Renderable
+
 class BlueprintSol:
     # Position
     POSITION_X = 0.0
@@ -16,4 +18,4 @@ class BlueprintSol:
 
     #COULEUR = (100, 100, 100)
 
-    FORME = None
+    FORME = Renderable.FORME_POLYGONE

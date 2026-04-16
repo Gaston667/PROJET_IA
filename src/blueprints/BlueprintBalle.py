@@ -1,3 +1,5 @@
+from src.Composant.Renderable import Renderable
+
 class BlueprintBalle:
     POSITION_X = 0.0
     POSITION_Y = 10.0
@@ -15,6 +17,6 @@ class BlueprintBalle:
     RESTITUTION = 0.75
     FRICTION = 0.15
 
-    FORME = "cercle"
+    FORME = Renderable.FORME_CERCLE
     COULEUR = (255, 255, 0)
     RAYON = 1.0

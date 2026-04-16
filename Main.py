@@ -1,4 +1,4 @@
-﻿from src.Composant import ColliderPlane
+from src.Composant import ColliderPlane
 from time import perf_counter
 
 from src.Composant.Force import Force
@@ -187,7 +187,7 @@ def creer_objet_demo() -> Entite:
     renderable = Renderable(
         couleur=(255, 120, 40),
         visible=True,
-        forme="polygon",
+        forme=Renderable.FORME_POLYGONE,
     )
     renderable.points = [
         Point3D(-4.0, 0.0, 0.0),

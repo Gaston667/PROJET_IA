@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pygame
 
+from src.Composant.Renderable import Renderable
 from src.Config import Config
 from src.Rendu.Camera import Camera
 from src.Rendu.Point3D import Point3D
@@ -17,7 +18,7 @@ class Render3D(Render):
         self.initialise = False
         self.ecran = None
         self.clock = None
-        self.camera = Camera(largeur, hauteur, x=20.0, y=18.0, z=-150.0)
+        self.camera = Camera(largeur, hauteur, x=20.0, y=3.0, z=-150.0)
         self.vitesse_camera = 12.0
         self.vitesse_camera_rapide = 17.0
         self.sensibilite_souris = 0.12
@@ -48,14 +49,13 @@ class Render3D(Render):
 
 
 
-    ## Fonctions de dessin pour les entités, les lignes, les polygones ##
+    ## Fonctions de dessin pour les entitÃƒÆ’Ã‚Â©s, les lignes, les polygones ##
     def draw_entity(self, renderable, camera: Camera, point: Point3D) -> None:
-        """    draw_entity() : Dessine une entité 3D en fonction de son composant Renderable, en projetant ses points à l'écran et en utilisant les paramètres de la caméra pour ajuster la taille et la position des éléments dessinés.    """
         couleur = getattr(renderable, "couleur", (255, 255, 255))
         forme = getattr(renderable, "forme", None)
         rayon = getattr(renderable, "rayon", 6)
 
-        if forme in ("line", "ligne"):
+        if forme == Renderable.FORME_LIGNE:
             points = getattr(renderable, "points", None)
             if isinstance(points, (list, tuple)) and len(points) >= 2:
                 p1 = self._decaler_point(point, points[0])
@@ -64,7 +64,7 @@ class Render3D(Render):
                 return
             
             
-        if forme in ("polygon", "quad", "triangle"):
+        if forme == Renderable.FORME_POLYGONE:
             points = getattr(renderable, "points", None)
             if isinstance(points, (list, tuple)) and len(points) >= 3:
                 points_3d = [self._decaler_point(point, p) for p in points]
@@ -73,7 +73,7 @@ class Render3D(Render):
                     self.draw_polygon(points_2d, couleur)
                 return
 
-        if forme in ("cercle", "circle", "point", None):
+        if forme in (Renderable.FORME_CERCLE, None):
             self.draw_point(point, camera, couleur, rayon)
             return
 
@@ -87,7 +87,6 @@ class Render3D(Render):
         couleur: tuple[int, int, int] = (255, 255, 255),
         largeur: int = 1,
     ) -> None:
-        """    Dessine une ligne entre deux points 3D projetés à l'écran, avec une épaisseur ajustée en fonction de la distance pour donner une impression de profondeur.    """
         debut = camera.project(point_debut)
         fin = camera.project(point_fin)
         if debut is None or fin is None:
@@ -107,7 +106,6 @@ class Render3D(Render):
         couleur: tuple[int, int, int] = (255, 255, 255),
         largeur: int = 0,
     ) -> None:
-        """    Dessine un polygone défini par une liste de points 3D projetés à l'écran, avec une couleur et une épaisseur spécifiées.    """
         if len(points) < 3:
             return
         
@@ -128,7 +126,7 @@ class Render3D(Render):
     ###### FOCNTIONS A LA GESTION DU SOL ######
    
     def _generer_case(self, x: int, z: int, taille: int = 10) -> list[Point3D]:
-        """    Génère les 4 points d'une case du sol à partir de ses coordonnées x et z, et de sa taille.    """
+        """    GÃƒÆ’Ã‚Â©nÃƒÆ’Ã‚Â¨re les 4 points d'une case du sol ÃƒÆ’Ã‚Â  partir de ses coordonnÃƒÆ’Ã‚Â©es x et z, et de sa taille.    """
         return [
             Point3D(x, 0, z),
             Point3D(x + taille, 0, z),
@@ -137,7 +135,7 @@ class Render3D(Render):
         ]
     
     def draw_sol(self, camera: Camera) -> None:
-        """    Dessine un sol en damier en générant des cases autour de la position de la caméra, et en les projetant à l'écran.    """
+        """    Dessine un sol en damier en gÃƒÆ’Ã‚Â©nÃƒÆ’Ã‚Â©rant des cases autour de la position de la camÃƒÆ’Ã‚Â©ra, et en les projetant ÃƒÆ’Ã‚Â  l'ÃƒÆ’Ã‚Â©cran.    """
         step = 20 # Taille des cases du sol
         view = 400 # distance de rendu du sol
 
@@ -167,7 +165,7 @@ class Render3D(Render):
                 self.draw_polygon(points_2d, color_sol)
 
     def draw_point(self, point: Point3D, camera: Camera, couleur: tuple[int, int, int] = (255, 255, 255), rayon: float = 0.2) -> None:
-        """    Dessine un point 3D projeté à l'écran, avec une taille ajustée en fonction de la distance pour donner une impression de profondeur.    """
+        """    Dessine un point 3D projetÃƒÆ’Ã‚Â© ÃƒÆ’Ã‚Â  l'ÃƒÆ’Ã‚Â©cran, avec une taille ajustÃƒÆ’Ã‚Â©e en fonction de la distance pour donner une impression de profondeur.    """
         #projection
         projection = camera.project(point)
         if projection is None:
@@ -196,8 +194,8 @@ class Render3D(Render):
 
 
 
-    ## Fonctions de projection, de gestion des points 3D et de déplacement ##
-    """    Projette une liste de points 3D à l'écran en utilisant les paramètres de la caméra, et retourne une liste de points 2D correspondants.    """
+    ## Fonctions de projection, de gestion des points 3D et de dÃƒÆ’Ã‚Â©placement ##
+    """    Projette une liste de points 3D ÃƒÆ’Ã‚Â  l'ÃƒÆ’Ã‚Â©cran en utilisant les paramÃƒÆ’Ã‚Â¨tres de la camÃƒÆ’Ã‚Â©ra, et retourne une liste de points 2D correspondants.    """
     def _project_points(self, points_3d, camera):
         points_2d = []
 
@@ -212,7 +210,7 @@ class Render3D(Render):
     
 
     def _decaler_point(self, origine: Point3D, offset) -> Point3D:
-        """    Décale un point 3D d'une origine en ajoutant un offset, qui peut être soit un autre Point3D, soit une liste ou un tuple de coordonnées.    """
+        """    DÃƒÆ’Ã‚Â©cale un point 3D d'une origine en ajoutant un offset, qui peut ÃƒÆ’Ã‚Âªtre soit un autre Point3D, soit une liste ou un tuple de coordonnÃƒÆ’Ã‚Â©es.    """
         if isinstance(offset, Point3D):
             return Point3D(origine.x + offset.x, origine.y + offset.y, origine.z + offset.z)
 
@@ -222,7 +220,7 @@ class Render3D(Render):
         return origine.copy()
     
     def _gerer_deplacement_camera(self) -> None:
-        """    Gère le déplacement de la caméra en fonction des touches du clavier, en ajustant la vitesse de déplacement en fonction du temps écoulé pour assurer une expérience fluide.    """
+        """    GÃƒÆ’Ã‚Â¨re le dÃƒÆ’Ã‚Â©placement de la camÃƒÆ’Ã‚Â©ra en fonction des touches du clavier, en ajustant la vitesse de dÃƒÆ’Ã‚Â©placement en fonction du temps ÃƒÆ’Ã‚Â©coulÃƒÆ’Ã‚Â© pour assurer une expÃƒÆ’Ã‚Â©rience fluide.    """
         touches = pygame.key.get_pressed()
         dt = (self.clock.get_time() / 1000.0) if self.clock is not None else (1.0 / max(1, Config.fps))
         vitesse_base = self.vitesse_camera_rapide if touches[pygame.K_LSHIFT] or touches[pygame.K_RSHIFT] else self.vitesse_camera
@@ -260,13 +258,13 @@ class Render3D(Render):
             self.camera.deplacer(dx, dy, dz)
     
     def display(self) -> None:
-        """ display() : Met à jour l'affichage en appelant pygame.display.flip(), et limite le nombre de frames par seconde en utilisant self.clock.tick(Config.fps) pour assurer une expérience fluide.    """
+        """ display() : Met ÃƒÆ’Ã‚Â  jour l'affichage en appelant pygame.display.flip(), et limite le nombre de frames par seconde en utilisant self.clock.tick(Config.fps) pour assurer une expÃƒÆ’Ã‚Â©rience fluide.    """
         pygame.display.flip()
         if self.clock is not None:
             self.clock.tick(Config.fps)
     
     def gerer_evenements(self) -> bool:
-        """    gerer_evenements() : Gère les événements de la fenêtre, tels que les mouvements de la souris pour orienter la caméra, les touches du clavier pour déplacer la caméra, et les événements de redimensionnement de la fenêtre. Retourne False si l'utilisateur souhaite fermer la fenêtre, sinon True.    """
+        """    gerer_evenements() : GÃƒÆ’Ã‚Â¨re les ÃƒÆ’Ã‚Â©vÃƒÆ’Ã‚Â©nements de la fenÃƒÆ’Ã‚Âªtre, tels que les mouvements de la souris pour orienter la camÃƒÆ’Ã‚Â©ra, les touches du clavier pour dÃƒÆ’Ã‚Â©placer la camÃƒÆ’Ã‚Â©ra, et les ÃƒÆ’Ã‚Â©vÃƒÆ’Ã‚Â©nements de redimensionnement de la fenÃƒÆ’Ã‚Âªtre. Retourne False si l'utilisateur souhaite fermer la fenÃƒÆ’Ã‚Âªtre, sinon True.    """
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
@@ -293,7 +291,7 @@ class Render3D(Render):
         return True
 
     def fermer(self) -> None:
-        """    fermer() : Ferme la fenêtre et libère les ressources en appelant pygame.quit(), et réinitialise les attributs liés à l'affichage.    """
+        """    fermer() : Ferme la fenÃƒÆ’Ã‚Âªtre et libÃƒÆ’Ã‚Â¨re les ressources en appelant pygame.quit(), et rÃƒÆ’Ã‚Â©initialise les attributs liÃƒÆ’Ã‚Â©s ÃƒÆ’Ã‚Â  l'affichage.    """
         if self.initialise:
             pygame.quit()
         self.initialise = False
