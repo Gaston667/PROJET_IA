@@ -13,8 +13,8 @@ class BlueprintSol:
     OFFSET = 0.0
 
     # Materiau
-    RESTITUTION = 0.55
-    FRICTION = 0.65
+    RESTITUTION = 0.1
+    FRICTION = 0.457
 
     #COULEUR = (100, 100, 100)
 

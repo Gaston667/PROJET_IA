@@ -15,7 +15,29 @@ class Config:
     max_frame_time: float = 0.25
 
     # Duree maximale de la simulation (s).
-    max_simulation_time: float = 100.0
+    max_simulation_time: float = 1000.0
 
     # Pixels par metre pour le rendu.
     pixels_par_metre: float = 20.0
+
+    # Distance maximale pour le culling des objets (en metres). c'est a dire que les objets plus loin que cette distance ne seront pas rendus.
+    distance_culling: float = 1000.0
+
+    # plan proche et plan lointain pour la projection perspective de la caméra (en metres).
+    near_plane: float = 0.1
+    far_plane: float = 1000.0
+
+    fov: float = 90.0
+
+    largeur_fenetre: int = 800
+    hauteur_fenetre: int = 600
+
+
+    #Sol taille et nombre de cases en metre
+    taille_case_sol: float = 10.0
+    nb_cases_sol: int = 40
+
+    #HI-z params
+    HIZ_COLS = 20   # Nombre de colonnes de tuiles
+    HIZ_ROWS = 15   # Nombre de lignes de tuiles
+
