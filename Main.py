@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import math
 from time import perf_counter
 
 from src.Composant.ColliderPlane import ColliderPlane
@@ -25,6 +26,7 @@ from src.Rendu.Point3D import Point3D
 from src.Rendu.Render3D import Render3D
 from src.Rendu.SystemeRendu import SystemeRendu
 from src.Rendu.Telemetrie import FenetreTelemetrie
+from src.blueprints.BlueprintSceneOcclusion import BlueprintSceneOcclusion
 from src.blueprints.BlueprintSol import BlueprintSol
 
 
@@ -52,6 +54,7 @@ def creer_sphere_test(
     rayon: float,
     couleur: tuple[int, int, int],
 ) -> Entite:
+    bp = BlueprintSceneOcclusion
     entite = Entite()
     position = Position(x, y, z)
     renderable = Renderable(
@@ -59,8 +62,8 @@ def creer_sphere_test(
         visible=True,
         forme=Renderable.FORME_CERCLE,
         rayon=rayon,
-        segments=24,
-        anneaux=12,
+        segments=bp.SPHERE_SEGMENTS,
+        anneaux=bp.SPHERE_ANNEAUX,
     )
 
     entite.ajouter_composant(position)
@@ -73,19 +76,18 @@ def creer_sphere_test(
 
 
 def creer_panneau_occlusion() -> Entite:
+    bp = BlueprintSceneOcclusion
     entite = Entite()
-    position = Position(20.0, 10.0, -55.0)
+    position = Position(bp.PANNEAU_POSITION_X, bp.PANNEAU_POSITION_Y, bp.PANNEAU_POSITION_Z)
     renderable = Renderable(
-        couleur=(45, 95, 210),
+        couleur=bp.PANNEAU_COULEUR,
         visible=True,
         forme=Renderable.FORME_POLYGONE,
-        rayon=24.0,
+        rayon=bp.PANNEAU_RAYON,
     )
     renderable.points = [
-        Point3D(-18.0, -12.0, 0.0),
-        Point3D(18.0, -12.0, 0.0),
-        Point3D(18.0, 12.0, 0.0),
-        Point3D(-18.0, 12.0, 0.0),
+        Point3D(x, y, z)
+        for x, y, z in bp.PANNEAU_POINTS
     ]
 
     entite.ajouter_composant(position)
@@ -95,6 +97,30 @@ def creer_panneau_occlusion() -> Entite:
     entite.renderable = renderable
 
     return entite
+
+
+def creer_scene_test_occlusion(monde: Monde) -> None:
+    bp = BlueprintSceneOcclusion
+    monde.ajouter_entite(creer_plan())
+    monde.ajouter_entite(creer_panneau_occlusion())
+    balle = creer_sphere_test(
+        bp.BALLE_X_CENTRE,
+        bp.BALLE_POSITION_Y,
+        bp.BALLE_POSITION_Z,
+        bp.BALLE_RAYON,
+        bp.BALLE_COULEUR,
+    )
+    balle.tag = bp.BALLE_TAG
+    monde.ajouter_entite(balle)
+
+
+def glisser_balle_occlusion(monde: Monde, temps: float) -> None:
+    bp = BlueprintSceneOcclusion
+    x = bp.BALLE_X_CENTRE + math.sin(temps * bp.BALLE_VITESSE) * bp.BALLE_AMPLITUDE_X
+    for entite in monde.entites:
+        if getattr(entite, "tag", None) == bp.BALLE_TAG:
+            entite.position.x = x
+            return
 
 
 def creer_plan() -> Entite:
@@ -195,18 +221,13 @@ def main() -> None:
     profiler = Profiler()
 
     # Ajout des entités
-    monde.ajouter_entite(creer_plan())
-    monde.ajouter_entite(creer_panneau_occlusion())
-    monde.ajouter_entite(creer_sphere_test(20.0, 10.0, 15.0, 4.0, (255, 60, 60)))
-    monde.ajouter_entite(creer_sphere_test(20.0, 2.0, 25.0, 3.0, (255, 180, 60)))
-    monde.ajouter_entite(creer_sphere_test(180.0, 10.0, 20.0, 4.0, (80, 255, 120)))
-    monde.ajouter_entite(creer_sphere_test(-140.0, 10.0, 20.0, 4.0, (80, 255, 255)))
+    creer_scene_test_occlusion(monde)
 
     # Ajout des systèmes physiques (exécutés dans cet ordre à chaque step)
 
     # --- Initialisation des modules ---
     simulation    = Simulation(monde)
-    rendu         = Render3D(Config.largeur_fenetre, Config.hauteur_fenetre, "Simulation 3D")
+    rendu         = Render3D(Config.largeur_fenetre, Config.hauteur_fenetre, "Test Occlusion Pixel")
     systeme_rendu = SystemeRendu(rendu)
 
     rendu.initialiser()  # Crée la fenêtre pygame
@@ -261,6 +282,7 @@ def main() -> None:
 
         # Partage l'accumulateur avec le monde (utile pour l'interpolation future)
         monde.accumulateur = accumulateur
+        glisser_balle_occlusion(monde, simulation.temps_courant)
 
         # --- Rendu de la frame ---
         with profiler.mesurer("rendu"):

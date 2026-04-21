@@ -262,10 +262,14 @@ class FenetreTelemetrie:
     ) -> None:
         lignes = self._lignes_infos(monde, rendu, profiler)
         contenu = "\n".join(lignes)
+        scroll_y = self.infos.yview()
+        scroll_x = self.infos.xview()
         self.infos.configure(state="normal")
         self.infos.delete("1.0", tk.END)
         self.infos.insert("1.0", contenu)
         self.infos.configure(state="disabled")
+        self.infos.yview_moveto(scroll_y[0])
+        self.infos.xview_moveto(scroll_x[0])
 
     def _lignes_infos(
         self,
@@ -296,6 +300,15 @@ class FenetreTelemetrie:
                 lignes.append("Compteurs frame")
                 for nom, valeur in compteurs.items():
                     lignes.append(f"  {nom:<18} {valeur}")
+
+        compteurs_rendu = {
+            "objets_rendus": getattr(rendu, "objets_rendus", 0),
+            "objets_occlus_pixels": getattr(rendu, "objets_occlus_pixels", 0),
+        }
+        lignes.append("")
+        lignes.append("Compteurs rendu")
+        for nom, valeur in compteurs_rendu.items():
+            lignes.append(f"  {nom:<18} {valeur}")
 
         for entite in monde.entites:
             lignes.append("")

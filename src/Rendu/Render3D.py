@@ -71,7 +71,9 @@ class Render3D(Render):
         self.vitesse_camera_rapide = 17.0
         self.sensibilite_souris = 0.12
         self.souris_capturee = False
-        self._initialiser_hiz()
+        self._initialiser_occlusion_pixels()
+        self.objets_occlus_pixels = 0
+        self.objets_rendus = 0
 
     # =========================================================================
     # SECTION 1 : Cycle de vie (initialisation, affichage, fermeture)
@@ -131,7 +133,9 @@ class Render3D(Render):
             None
         """
         self._verifier_initialisation()
-        self._vider_hiz()
+        self._vider_occlusion_pixels()
+        self.objets_occlus_pixels = 0
+        self.objets_rendus = 0
         self.ecran.fill(couleur)
 
     def display(self) -> None:
@@ -629,7 +633,7 @@ class Render3D(Render):
     # ─────────────────────────────────────────────────────────────────────────────
 
 
-    def _initialiser_hiz(self) -> None:
+    def _initialiser_occlusion_pixels(self) -> None:
         """
         Crée le Hi-Z buffer et le remplit à 0.
 
@@ -637,13 +641,13 @@ class Render3D(Render):
         Structure : liste 2D [row][col] de flottants.
         0.0 = aucun occulteur = tout objet passe.
         """
-        self._hiz: list[list[float]] = [
-            [0.0] * Config.HIZ_COLS
-            for _ in range(Config.HIZ_ROWS)
+        self._occlusion_pixels: list[list[float]] = [
+            [0.0] * max(1, int(self.largeur))
+            for _ in range(max(1, int(self.hauteur)))
         ]
 
 
-    def _vider_hiz(self) -> None:
+    def _vider_occlusion_pixels(self) -> None:
         """
         Remet toutes les cellules du Hi-Z buffer à 0.
 
@@ -651,9 +655,21 @@ class Render3D(Render):
         Sinon les occulteurs de la frame précédente bloqueraient
         des objets qui ne sont plus cachés.
         """
-        for row in self._hiz:
-            for c in range(Config.HIZ_COLS):
-                row[c] = 0.0
+        if self.ecran is not None:
+            largeur, hauteur = self.ecran.get_size()
+            if (
+                len(self._occlusion_pixels) != hauteur
+                or len(self._occlusion_pixels[0]) != largeur
+            ):
+                self._occlusion_pixels = [
+                    [0.0] * largeur
+                    for _ in range(hauteur)
+                ]
+                return
+
+        for row in self._occlusion_pixels:
+            for x in range(len(row)):
+                row[x] = 0.0
 
 
     def _pixel_vers_tuile(self, px: float, py: float) -> tuple[int, int] | None:
@@ -681,7 +697,7 @@ class Render3D(Render):
         return col, row
 
 
-    def _mettre_a_jour_hiz(
+    def _mettre_a_jour_occlusion_pixels(
         self,
         px_min: float,
         py_min: float,
@@ -706,19 +722,22 @@ class Render3D(Render):
         w, h = self.ecran.get_size()
 
         # Convertir les coins en tuiles (clampé dans la grille)
-        col_min = max(0, int((px_min / w) * Config.HIZ_COLS))
-        col_max = min(Config.HIZ_COLS - 1, int((px_max / w) * Config.HIZ_COLS))
-        row_min = max(0, int((py_min / h) * Config.HIZ_ROWS))
-        row_max = min(Config.HIZ_ROWS - 1, int((py_max / h) * Config.HIZ_ROWS))
+        x_min = max(0, int(px_min))
+        x_max = min(w - 1, int(px_max))
+        y_min = max(0, int(py_min))
+        y_max = min(h - 1, int(py_max))
 
-        for row in range(row_min, row_max + 1):
-            for col in range(col_min, col_max + 1):
-                # On garde la profondeur la plus grande (objet le plus loin)
-                if profondeur > self._hiz[row][col]:
-                    self._hiz[row][col] = profondeur
+        if x_min > x_max or y_min > y_max:
+            return
+
+        for y in range(y_min, y_max + 1):
+            ligne = self._occlusion_pixels[y]
+            for x in range(x_min, x_max + 1):
+                if ligne[x] == 0.0 or profondeur < ligne[x]:
+                    ligne[x] = profondeur
 
 
-    def _tester_hiz(
+    def _tester_occlusion_pixels(
         self,
         point: "Point3D",
         rayon: float = 0.0
@@ -768,37 +787,36 @@ class Render3D(Render):
         # ── 3. Lire la profondeur MAX dans les tuiles couvertes ──────────────
         w, h = self.ecran.get_size()
 
-        col_min = max(0, int((px_min / w) * Config.HIZ_COLS))
-        col_max = min(Config.HIZ_COLS - 1, int((px_max / w) * Config.HIZ_COLS))
-        row_min = max(0, int((py_min / h) * Config.HIZ_ROWS))
-        row_max = min(Config.HIZ_ROWS - 1, int((py_max / h) * Config.HIZ_ROWS))
+        x_min = max(0, int(px_min))
+        x_max = min(w - 1, int(px_max))
+        y_min = max(0, int(py_min))
+        y_max = min(h - 1, int(py_max))
 
-        profondeur_hiz_max = 0.0
-        for row in range(row_min, row_max + 1):
-            for col in range(col_min, col_max + 1):
-                val = self._hiz[row][col]
-                if val > profondeur_hiz_max:
-                    profondeur_hiz_max = val
+        if x_min > x_max or y_min > y_max:
+            return False
 
         # ── 4. Comparaison ───────────────────────────────────────────────────
         # profondeur MIN de l'objet = profondeur - rayon (face avant)
         profondeur_min_objet = profondeur - rayon
 
-        if profondeur_hiz_max > 0 and profondeur_min_objet > profondeur_hiz_max:
-            # L'objet est entièrement derrière les occulteurs → invisible
-            return False
+        for y in range(y_min, y_max + 1):
+            ligne = self._occlusion_pixels[y]
+            for x in range(x_min, x_max + 1):
+                val = ligne[x]
+                if val == 0.0 or profondeur_min_objet <= val:
+                    return True
 
         # Visible (ou pas encore d'info dans le buffer)
-        return True
+        return False
 
-    def _mettre_a_jour_hiz_objet(self, point: Point3D, rayon: float = 1.0) -> None:
+    def _mettre_a_jour_occlusion_objet(self, point: Point3D, rayon: float = 1.0) -> None:
         proj = self.camera.project(point)
         if proj is None:
             return
 
         px, py, profondeur = proj.x, proj.y, proj.z
         taille = (rayon / profondeur) * self.ecran.get_width() if profondeur > 0 else 1
-        self._mettre_a_jour_hiz(
+        self._mettre_a_jour_occlusion_pixels(
             px - taille,
             py - taille,
             px + taille,
@@ -944,7 +962,8 @@ class Render3D(Render):
         rayon = getattr(renderable, "rayon", 0.0)
 
         #Oclusion culling
-        if not self._tester_hiz(point, rayon):
+        if not self._tester_occlusion_pixels(point, rayon):
+            self.objets_occlus_pixels += 1
             return
 
         # --- Ligne ---
@@ -960,7 +979,8 @@ class Render3D(Render):
             if self._project_points(pts_test[:2]) is None:
                 return
             self.draw_line(pts_test[0], pts_test[1], couleur)
-            self._mettre_a_jour_hiz_objet(point, rayon)
+            self._mettre_a_jour_occlusion_objet(point, rayon)
+            self.objets_rendus += 1
             return
 
         # --- Polygone convexe ---
@@ -977,7 +997,8 @@ class Render3D(Render):
             if points_2d:
                 for p1, p2, p3 in self.trianguler_polygone(points_2d):
                     self.draw_triangle(p1, p2, p3, couleur)
-                self._mettre_a_jour_hiz_objet(point, rayon)
+                self._mettre_a_jour_occlusion_objet(point, rayon)
+                self.objets_rendus += 1
             return
 
         # --- Cercle / Sphère ---
@@ -994,7 +1015,8 @@ class Render3D(Render):
                     self.draw_triangle(*tri_proj, couleur)
                     dessine = True
             if dessine:
-                self._mettre_a_jour_hiz_objet(point, rayon)
+                self._mettre_a_jour_occlusion_objet(point, rayon)
+                self.objets_rendus += 1
             return
         
         # Après le dessin, mettre à jour le buffer :
