@@ -52,7 +52,7 @@ class SystemeRendu:
         if not self.renderer.initialise:
             self.renderer.initialiser()
 
-        self.renderer.clear()
+        self.renderer.effacer()
 
         # ── Frustum calculé une seule fois par frame ─────────────────────────
         # La caméra est self.renderer.camera (unique source de vérité)
@@ -79,4 +79,4 @@ class SystemeRendu:
         if self.overlay is not None:
             self.overlay(self.renderer, monde)
 
-        self.renderer.display()
+        self.renderer.afficher()

@@ -303,6 +303,7 @@ class FenetreTelemetrie:
 
         compteurs_rendu = {
             "objets_rendus": getattr(rendu, "objets_rendus", 0),
+            "objets_occlus": getattr(rendu, "objets_occlus", 0),
             "objets_occlus_pixels": getattr(rendu, "objets_occlus_pixels", 0),
         }
         lignes.append("")

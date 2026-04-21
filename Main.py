@@ -71,6 +71,7 @@ def creer_sphere_test(
 
     entite.position = position
     entite.renderable = renderable
+    entite.tag = bp.LIGNE_TAG
 
     return entite
 
@@ -99,10 +100,36 @@ def creer_panneau_occlusion() -> Entite:
     return entite
 
 
+def creer_ligne_occlusion() -> Entite:
+    bp = BlueprintSceneOcclusion
+    entite = Entite()
+    position = Position(bp.LIGNE_POSITION_X, bp.LIGNE_POSITION_Y, bp.LIGNE_POSITION_Z)
+    renderable = Renderable(
+        couleur=bp.LIGNE_COULEUR,
+        visible=True,
+        forme=Renderable.FORME_LIGNE,
+        rayon=bp.LIGNE_RAYON,
+    )
+    renderable.points = [
+        Point3D(x, y, z)
+        for x, y, z in bp.LIGNE_POINTS
+    ]
+
+    entite.ajouter_composant(position)
+    entite.ajouter_composant(renderable)
+
+    entite.position = position
+    entite.renderable = renderable
+    entite.tag = bp.LIGNE_TAG
+
+    return entite
+
+
 def creer_scene_test_occlusion(monde: Monde) -> None:
     bp = BlueprintSceneOcclusion
     monde.ajouter_entite(creer_plan())
     monde.ajouter_entite(creer_panneau_occlusion())
+    monde.ajouter_entite(creer_ligne_occlusion())
     balle = creer_sphere_test(
         bp.BALLE_X_CENTRE,
         bp.BALLE_POSITION_Y,
@@ -120,6 +147,16 @@ def glisser_balle_occlusion(monde: Monde, temps: float) -> None:
     for entite in monde.entites:
         if getattr(entite, "tag", None) == bp.BALLE_TAG:
             entite.position.x = x
+        elif getattr(entite, "tag", None) == bp.LIGNE_TAG:
+            entite.position.x = x
+
+
+def glisser_ligne_occlusion(monde: Monde, temps: float) -> None:
+    bp = BlueprintSceneOcclusion
+    y = bp.LIGNE_POSITION_Y + math.sin(temps * bp.LIGNE_VITESSE) * bp.LIGNE_AMPLITUDE_Y
+    for entite in monde.entites:
+        if getattr(entite, "tag", None) == bp.LIGNE_TAG:
+            entite.position.y = y
             return
 
 
@@ -157,42 +194,6 @@ def creer_plan() -> Entite:
 
     return plan
 
-
-def creer_objet_demo() -> Entite:
-    """
-    Objet de démonstration : un polygone 3D (quadrilatère).
-    
-    Contrairement aux balles (FORME_CERCLE), un polygone est défini
-    par une liste de sommets 3D (renderable.points).
-    
-    Ces points sont en coordonnées LOCALES (relatives à la position).
-    Le renderer les translate selon la position de l'entité au moment du rendu.
-    """
-    objet = Entite()
-
-    position = Position(0.0, 2.0, 35.0)
-
-    renderable = Renderable(
-        couleur=(255, 120, 40),
-        visible=True,
-        forme=Renderable.FORME_POLYGONE,
-    )
-
-    # Les 4 sommets du polygone en coordonnées locales
-    renderable.points = [
-        Point3D(-4.0, 0.0, 0.0),
-        Point3D( 4.0, 0.0, 0.0),
-        Point3D( 3.0, 4.0, 6.0),
-        Point3D(-3.0, 4.0, 6.0),
-    ]
-
-    objet.ajouter_composant(position)
-    objet.ajouter_composant(renderable)
-
-    objet.position   = position
-    objet.renderable = renderable
-
-    return objet
 
 
 # =============================================================================
@@ -283,6 +284,7 @@ def main() -> None:
         # Partage l'accumulateur avec le monde (utile pour l'interpolation future)
         monde.accumulateur = accumulateur
         glisser_balle_occlusion(monde, simulation.temps_courant + accumulateur)
+        glisser_ligne_occlusion(monde, simulation.temps_courant + accumulateur)
 
         # --- Rendu de la frame ---
         with profiler.mesurer("rendu"):
