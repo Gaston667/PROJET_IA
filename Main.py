@@ -282,7 +282,7 @@ def main() -> None:
 
         # Partage l'accumulateur avec le monde (utile pour l'interpolation future)
         monde.accumulateur = accumulateur
-        glisser_balle_occlusion(monde, simulation.temps_courant)
+        glisser_balle_occlusion(monde, simulation.temps_courant + accumulateur)
 
         # --- Rendu de la frame ---
         with profiler.mesurer("rendu"):

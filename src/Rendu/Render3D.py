@@ -823,6 +823,67 @@ class Render3D(Render):
             py + taille,
             profondeur,
         )
+
+    def _point_dans_triangle_2d(
+        self,
+        px: float,
+        py: float,
+        p1: Point3D,
+        p2: Point3D,
+        p3: Point3D,
+    ) -> bool:
+        d1 = (px - p2.x) * (p1.y - p2.y) - (p1.x - p2.x) * (py - p2.y)
+        d2 = (px - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (py - p3.y)
+        d3 = (px - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (py - p1.y)
+
+        negatif = d1 < 0 or d2 < 0 or d3 < 0
+        positif = d1 > 0 or d2 > 0 or d3 > 0
+        return not (negatif and positif)
+
+    def _tester_triangle_occlusion_pixels(self, triangle: list[Point3D]) -> bool:
+        w, h = self.ecran.get_size()
+        x_min = max(0, int(min(p.x for p in triangle)))
+        x_max = min(w - 1, int(max(p.x for p in triangle)))
+        y_min = max(0, int(min(p.y for p in triangle)))
+        y_max = min(h - 1, int(max(p.y for p in triangle)))
+
+        if x_min > x_max or y_min > y_max:
+            return False
+
+        profondeur = min(p.z for p in triangle)
+
+        for y in range(y_min, y_max + 1):
+            ligne = self._occlusion_pixels[y]
+            py = y + 0.5
+            for x in range(x_min, x_max + 1):
+                px = x + 0.5
+                if self._point_dans_triangle_2d(px, py, triangle[0], triangle[1], triangle[2]):
+                    val = ligne[x]
+                    if val == 0.0 or profondeur <= val:
+                        return True
+
+        return False
+
+    def _mettre_a_jour_occlusion_triangle(self, triangle: list[Point3D]) -> None:
+        w, h = self.ecran.get_size()
+        x_min = max(0, int(min(p.x for p in triangle)))
+        x_max = min(w - 1, int(max(p.x for p in triangle)))
+        y_min = max(0, int(min(p.y for p in triangle)))
+        y_max = min(h - 1, int(max(p.y for p in triangle)))
+
+        if x_min > x_max or y_min > y_max:
+            return
+
+        profondeur = min(p.z for p in triangle)
+
+        for y in range(y_min, y_max + 1):
+            ligne = self._occlusion_pixels[y]
+            py = y + 0.5
+            for x in range(x_min, x_max + 1):
+                px = x + 0.5
+                if self._point_dans_triangle_2d(px, py, triangle[0], triangle[1], triangle[2]):
+                    if ligne[x] == 0.0 or profondeur < ligne[x]:
+                        ligne[x] = profondeur
         
     # =========================================================================
     # SECTION 4 : Dessin des primitives (ligne, triangle, point)
@@ -962,7 +1023,7 @@ class Render3D(Render):
         rayon = getattr(renderable, "rayon", 0.0)
 
         #Oclusion culling
-        if not self._tester_occlusion_pixels(point, rayon):
+        if forme != Renderable.FORME_CERCLE and not self._tester_occlusion_pixels(point, rayon):
             self.objets_occlus_pixels += 1
             return
 
@@ -993,11 +1054,17 @@ class Render3D(Render):
             # ── Frustum culling ──────────────────────────────────────────────
             if frustum is not None and not self.objet_dans_frustum(frustum, pts_test, rayon):
                 return
-            points_2d = self._project_points(pts_test)
-            if points_2d:
-                for p1, p2, p3 in self.trianguler_polygone(points_2d):
-                    self.draw_triangle(p1, p2, p3, couleur)
-                self._mettre_a_jour_occlusion_objet(point, rayon)
+            projections = [self.camera.project(p) for p in pts_test]
+            if all(projections):
+                for i in range(1, len(projections) - 1):
+                    tri_proj = [projections[0], projections[i], projections[i + 1]]
+                    self.draw_triangle(
+                        (tri_proj[0].x, tri_proj[0].y),
+                        (tri_proj[1].x, tri_proj[1].y),
+                        (tri_proj[2].x, tri_proj[2].y),
+                        couleur,
+                    )
+                    self._mettre_a_jour_occlusion_triangle(tri_proj)
                 self.objets_rendus += 1
             return
 
@@ -1010,13 +1077,20 @@ class Render3D(Render):
             anneaux = getattr(renderable, "anneaux", 8)
             dessine = False
             for tri in self._generer_sphere(point, rayon, segments, anneaux):
-                tri_proj = self._project_points(tri)
-                if tri_proj:
-                    self.draw_triangle(*tri_proj, couleur)
+                tri_proj = [self.camera.project(p) for p in tri]
+                if all(tri_proj) and self._tester_triangle_occlusion_pixels(tri_proj):
+                    self.draw_triangle(
+                        (tri_proj[0].x, tri_proj[0].y),
+                        (tri_proj[1].x, tri_proj[1].y),
+                        (tri_proj[2].x, tri_proj[2].y),
+                        couleur,
+                    )
+                    self._mettre_a_jour_occlusion_triangle(tri_proj)
                     dessine = True
             if dessine:
-                self._mettre_a_jour_occlusion_objet(point, rayon)
                 self.objets_rendus += 1
+            else:
+                self.objets_occlus_pixels += 1
             return
         
         # Après le dessin, mettre à jour le buffer :
