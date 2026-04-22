@@ -1,2 +1,2 @@
 from .BlueprintSol import BlueprintSol
-from .BlueprintSceneOcclusion import BlueprintSceneOcclusion
+from .BlueprintBoule import BlueprintBoule

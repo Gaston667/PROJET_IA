@@ -4,6 +4,7 @@ from functools import lru_cache
 import logging
 import math
 
+import numpy as np
 import pygame
 
 from src.Composant.Renderable import Renderable
@@ -98,7 +99,7 @@ class Render3D(Render):
         self.ecran: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
 
-        self.camera = Camera(largeur, hauteur, x=20.0, y=3.0, z=-150.0)
+        self.camera = Camera(largeur, hauteur, x=0.0, y=3.0, z=0.0)
 
         self.vitesse_camera = 12.0
         self.vitesse_camera_rapide = 17.0
@@ -863,10 +864,10 @@ class Render3D(Render):
 
         Doit être appelé **une seule fois** dans ``__init__()``.
         """
-        self._buffer_pixels: list[list[float]] = [
-            [0.0] * max(1, int(self.largeur))
-            for _ in range(max(1, int(self.hauteur)))
-        ]
+        self._buffer_pixels = np.zeros(
+            (max(1, int(self.hauteur)), max(1, int(self.largeur))),
+            dtype=np.float32,
+        )
 
     def _vider_buffer_pixels(self) -> None:
         """
@@ -880,18 +881,13 @@ class Render3D(Render):
         if self.ecran is not None:
             largeur, hauteur = self.ecran.get_size()
             if (
-                len(self._buffer_pixels) != hauteur
-                or len(self._buffer_pixels[0]) != largeur
+                self._buffer_pixels.shape[0] != hauteur
+                or self._buffer_pixels.shape[1] != largeur
             ):
-                self._buffer_pixels = [
-                    [0.0] * largeur
-                    for _ in range(hauteur)
-                ]
+                self._buffer_pixels = np.zeros((hauteur, largeur), dtype=np.float32)
                 return
 
-        for row in self._buffer_pixels:
-            for x in range(len(row)):
-                row[x] = 0.0
+        self._buffer_pixels.fill(0.0)
 
     def _est_visible_pixels(
         self,
@@ -936,14 +932,8 @@ class Render3D(Render):
 
         profondeur_face_avant = profondeur - rayon
 
-        for y in range(y_min, y_max + 1):
-            ligne = self._buffer_pixels[y]
-            for x in range(x_min, x_max + 1):
-                val = ligne[x]
-                if val == 0.0 or profondeur_face_avant <= val:
-                    return True
-
-        return False
+        zone = self._buffer_pixels[y_min:y_max + 1, x_min:x_max + 1]
+        return bool(np.any((zone == 0.0) | (profondeur_face_avant <= zone)))
 
     def _enregistrer_occulteur_pixels(
         self,
@@ -975,11 +965,9 @@ class Render3D(Render):
         if x_min > x_max or y_min > y_max:
             return
 
-        for y in range(y_min, y_max + 1):
-            ligne = self._buffer_pixels[y]
-            for x in range(x_min, x_max + 1):
-                if ligne[x] == 0.0 or profondeur < ligne[x]:
-                    ligne[x] = profondeur
+        zone = self._buffer_pixels[y_min:y_max + 1, x_min:x_max + 1]
+        masque = (zone == 0.0) | (profondeur < zone)
+        zone[masque] = profondeur
 
     def _tester_triangle_pixels(self, triangle: list[Point3D]) -> bool:
         """
@@ -1005,17 +993,20 @@ class Render3D(Render):
         if x_min > x_max or y_min > y_max:
             return False
 
+        p1, p2, p3 = triangle
         profondeur = min(p.z for p in triangle)
+        yy, xx = np.ogrid[y_min:y_max + 1, x_min:x_max + 1]
+        px = xx + 0.5
+        py = yy + 0.5
 
-        for y in range(y_min, y_max + 1):
-            ligne = self._buffer_pixels[y]
-            for x in range(x_min, x_max + 1):
-                if self._point_dans_triangle_2d(x + 0.5, y + 0.5, *triangle):
-                    val = ligne[x]
-                    if val == 0.0 or profondeur <= val:
-                        return True
+        d1 = (px - p2.x) * (p1.y - p2.y) - (p1.x - p2.x) * (py - p2.y)
+        d2 = (px - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (py - p3.y)
+        d3 = (px - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (py - p1.y)
+        dedans = ~(((d1 < 0) | (d2 < 0) | (d3 < 0)) & ((d1 > 0) | (d2 > 0) | (d3 > 0)))
 
-        return False
+        zone = self._buffer_pixels[y_min:y_max + 1, x_min:x_max + 1]
+        visible = dedans & ((zone == 0.0) | (profondeur <= zone))
+        return bool(np.any(visible))
 
     def _enregistrer_triangle_pixels(self, triangle: list[Point3D]) -> None:
         """
@@ -1037,14 +1028,20 @@ class Render3D(Render):
         if x_min > x_max or y_min > y_max:
             return
 
+        p1, p2, p3 = triangle
         profondeur = min(p.z for p in triangle)
+        yy, xx = np.ogrid[y_min:y_max + 1, x_min:x_max + 1]
+        px = xx + 0.5
+        py = yy + 0.5
 
-        for y in range(y_min, y_max + 1):
-            ligne = self._buffer_pixels[y]
-            for x in range(x_min, x_max + 1):
-                if self._point_dans_triangle_2d(x + 0.5, y + 0.5, *triangle):
-                    if ligne[x] == 0.0 or profondeur < ligne[x]:
-                        ligne[x] = profondeur
+        d1 = (px - p2.x) * (p1.y - p2.y) - (p1.x - p2.x) * (py - p2.y)
+        d2 = (px - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (py - p3.y)
+        d3 = (px - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (py - p1.y)
+        dedans = ~(((d1 < 0) | (d2 < 0) | (d3 < 0)) & ((d1 > 0) | (d2 > 0) | (d3 > 0)))
+
+        zone = self._buffer_pixels[y_min:y_max + 1, x_min:x_max + 1]
+        masque = dedans & ((zone == 0.0) | (profondeur < zone))
+        zone[masque] = profondeur
 
     def _point_dans_triangle_2d(
         self,
@@ -1302,6 +1299,7 @@ class Render3D(Render):
         cam_case_z = int(cam_z // taille_case)
 
         distance_max = nb_cases * taille_case
+        distance_max2 = distance_max * distance_max
 
         for ix in range(-nb_cases, nb_cases + 1):
             for iz in range(-nb_cases, nb_cases + 1):
@@ -1314,14 +1312,14 @@ class Render3D(Render):
 
                 # ── Distance shading ──────────────────────────────────────────
                 # Plus la case est loin, plus elle est sombre
-                centre_case = Point3D(x0 + taille_case / 2, 0.0, z0 + taille_case / 2)
-                cam_sol     = Point3D(cam_x, 0.0, cam_z)
-                distance    = centre_case.distance(cam_sol)
+                dx = (x0 + taille_case / 2) - cam_x
+                dz = (z0 + taille_case / 2) - cam_z
+                distance2 = dx * dx + dz * dz
 
-                if distance > distance_max:
+                if distance2 > distance_max2:
                     continue
 
-                shade = max(0.0, 1.0 - (distance / distance_max))
+                shade = max(0.0, 1.0 - (distance2 / distance_max2))
 
                 # Alternance des couleurs en damier
                 base_couleur  = couleur if (case_x + case_z) % 2 == 0 else couleur_alternee

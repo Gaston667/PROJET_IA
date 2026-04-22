@@ -10,23 +10,32 @@
 
 from __future__ import annotations
 
-import math
 from time import perf_counter
 
 from src.Composant.ColliderPlane import ColliderPlane
+from src.Composant.Force import Force
+from src.Composant.Masse import Masse
 from src.Composant.Materiau import Materiau
 from src.Composant.Position import Position
 from src.Composant.Renderable import Renderable
+from src.Composant.Vitesse import Vitesse
 from src.Config import Config
 from src.Environement.Simulation import Simulation
 from src.Monde.Entite import Entite
 from src.Monde.Monde import Monde
 from src.Outils.Profiler import Profiler
-from src.Rendu.Point3D import Point3D
 from src.Rendu.Render3D import Render3D
 from src.Rendu.SystemeRendu import SystemeRendu
-from src.Rendu.Telemetrie import FenetreTelemetrie
-from src.blueprints.BlueprintSceneOcclusion import BlueprintSceneOcclusion
+from src.Systeme import (
+    SystemePhysique_Aerodynamique,
+    SystemePhysique_Collision,
+    SystemePhysique_Electromagnetique,
+    SystemePhysique_Gravite,
+    SystemePhysique_Mouvement,
+    SystemePhysique_Propulsion,
+)
+from src.Telemetrie import FenetreTelemetrie, HistoriqueFPS
+from src.blueprints.BlueprintBoule import BlueprintBoule
 from src.blueprints.BlueprintSol import BlueprintSol
 
 
@@ -47,117 +56,40 @@ from src.blueprints.BlueprintSol import BlueprintSol
 # =============================================================================
 
 
-def creer_sphere_test(
-    x: float,
-    y: float,
-    z: float,
-    rayon: float,
-    couleur: tuple[int, int, int],
-) -> Entite:
-    bp = BlueprintSceneOcclusion
+def creer_boule() -> Entite:
+    bp = BlueprintBoule
     entite = Entite()
-    position = Position(x, y, z)
+    position = Position(bp.POSITION_X, bp.POSITION_Y, bp.POSITION_Z)
     renderable = Renderable(
-        couleur=couleur,
+        couleur=bp.COULEUR,
         visible=True,
-        forme=Renderable.FORME_CERCLE,
-        rayon=rayon,
-        segments=bp.SPHERE_SEGMENTS,
-        anneaux=bp.SPHERE_ANNEAUX,
+        forme=bp.FORME,
+        rayon=bp.RAYON,
+        segments=bp.SEGMENTS,
+        anneaux=bp.ANNEAUX,
     )
+    masse = Masse(bp.MASSE)
+    materiau = Materiau(bp.RESTITUTION, bp.FRICTION)
+    vitesse = Vitesse(bp.VITESSE_X, bp.VITESSE_Y, bp.VITESSE_Z)
+    force = Force(bp.FORCE_X, bp.FORCE_Y, bp.FORCE_Z)
 
     entite.ajouter_composant(position)
     entite.ajouter_composant(renderable)
+    entite.ajouter_composant(masse)
+    entite.ajouter_composant(materiau)
+    entite.ajouter_composant(vitesse)
+    entite.ajouter_composant(force)
 
     entite.position = position
     entite.renderable = renderable
-    entite.tag = bp.LIGNE_TAG
+    entite.masse = masse
+    entite.materiau = materiau
+    entite.vitesse = vitesse
+    entite.force = force
+    entite.tag = bp.TAG
 
     return entite
 
-
-def creer_panneau_occlusion() -> Entite:
-    bp = BlueprintSceneOcclusion
-    entite = Entite()
-    position = Position(bp.PANNEAU_POSITION_X, bp.PANNEAU_POSITION_Y, bp.PANNEAU_POSITION_Z)
-    renderable = Renderable(
-        couleur=bp.PANNEAU_COULEUR,
-        visible=True,
-        forme=Renderable.FORME_POLYGONE,
-        rayon=bp.PANNEAU_RAYON,
-    )
-    renderable.points = [
-        Point3D(x, y, z)
-        for x, y, z in bp.PANNEAU_POINTS
-    ]
-
-    entite.ajouter_composant(position)
-    entite.ajouter_composant(renderable)
-
-    entite.position = position
-    entite.renderable = renderable
-
-    return entite
-
-
-def creer_ligne_occlusion() -> Entite:
-    bp = BlueprintSceneOcclusion
-    entite = Entite()
-    position = Position(bp.LIGNE_POSITION_X, bp.LIGNE_POSITION_Y, bp.LIGNE_POSITION_Z)
-    renderable = Renderable(
-        couleur=bp.LIGNE_COULEUR,
-        visible=True,
-        forme=Renderable.FORME_LIGNE,
-        rayon=bp.LIGNE_RAYON,
-    )
-    renderable.points = [
-        Point3D(x, y, z)
-        for x, y, z in bp.LIGNE_POINTS
-    ]
-
-    entite.ajouter_composant(position)
-    entite.ajouter_composant(renderable)
-
-    entite.position = position
-    entite.renderable = renderable
-    entite.tag = bp.LIGNE_TAG
-
-    return entite
-
-
-def creer_scene_test_occlusion(monde: Monde) -> None:
-    bp = BlueprintSceneOcclusion
-    monde.ajouter_entite(creer_plan())
-    monde.ajouter_entite(creer_panneau_occlusion())
-    monde.ajouter_entite(creer_ligne_occlusion())
-    balle = creer_sphere_test(
-        bp.BALLE_X_CENTRE,
-        bp.BALLE_POSITION_Y,
-        bp.BALLE_POSITION_Z,
-        bp.BALLE_RAYON,
-        bp.BALLE_COULEUR,
-    )
-    balle.tag = bp.BALLE_TAG
-    monde.ajouter_entite(balle)
-
-
-def glisser_balle_occlusion(monde: Monde, temps: float) -> None:
-    bp = BlueprintSceneOcclusion
-    x = bp.BALLE_X_CENTRE + math.sin(temps * bp.BALLE_VITESSE) * bp.BALLE_AMPLITUDE_X
-    for entite in monde.entites:
-        if getattr(entite, "tag", None) == bp.BALLE_TAG:
-            entite.position.x = x
-        elif getattr(entite, "tag", None) == bp.LIGNE_TAG:
-            entite.position.x = x
-
-
-def glisser_ligne_occlusion(monde: Monde, temps: float) -> None:
-    bp = BlueprintSceneOcclusion
-    y = bp.LIGNE_POSITION_Y + math.sin(temps * bp.LIGNE_VITESSE) * bp.LIGNE_AMPLITUDE_Y
-    for entite in monde.entites:
-        if getattr(entite, "tag", None) == bp.LIGNE_TAG:
-            entite.position.y = y
-            return
 
 
 def creer_plan() -> Entite:
@@ -195,6 +127,10 @@ def creer_plan() -> Entite:
     return plan
 
 
+def creer_scene_test_occlusion(monde: Monde) -> None:
+    monde.ajouter_entite(creer_plan())
+    monde.ajouter_entite(creer_boule())
+
 
 # =============================================================================
 # BOUCLE PRINCIPALE
@@ -225,6 +161,12 @@ def main() -> None:
     creer_scene_test_occlusion(monde)
 
     # Ajout des systèmes physiques (exécutés dans cet ordre à chaque step)
+    monde.ajouter_systeme(SystemePhysique_Electromagnetique())
+    monde.ajouter_systeme(SystemePhysique_Aerodynamique())
+    monde.ajouter_systeme(SystemePhysique_Propulsion())
+    monde.ajouter_systeme(SystemePhysique_Gravite())
+    monde.ajouter_systeme(SystemePhysique_Mouvement())
+    monde.ajouter_systeme(SystemePhysique_Collision())
 
     # --- Initialisation des modules ---
     simulation    = Simulation(monde)
@@ -283,8 +225,6 @@ def main() -> None:
 
         # Partage l'accumulateur avec le monde (utile pour l'interpolation future)
         monde.accumulateur = accumulateur
-        glisser_balle_occlusion(monde, simulation.temps_courant + accumulateur)
-        glisser_ligne_occlusion(monde, simulation.temps_courant + accumulateur)
 
         # --- Rendu de la frame ---
         with profiler.mesurer("rendu"):
@@ -297,6 +237,7 @@ def main() -> None:
         profiler.fin_frame()
 
     # --- Nettoyage ---
+    HistoriqueFPS().enregistrer_execution(profiler.fps_moyen(), profiler.frame_index)
     telemetrie.fermer()
     rendu.fermer()
 

@@ -21,10 +21,10 @@ class Config:
     pixels_par_metre: float = 20.0
 
     # Distance maximale pour le culling des objets (en metres). c'est a dire que les objets plus loin que cette distance ne seront pas rendus.
-    distance_culling: float = 1000.0
+    distance_culling: float = 400.0
 
     # plan proche et plan lointain pour la projection perspective de la caméra (en metres).
-    near_plane: float = 0.1
+    near_plane: float = 0.001
     far_plane: float = 1000.0
 
     fov: float = 90.0
@@ -34,8 +34,8 @@ class Config:
 
 
     #Sol taille et nombre de cases en metre
-    taille_case_sol: float = 10.0
-    nb_cases_sol: int = 40
+    taille_case_sol: float = 1.25
+    nb_cases_sol: int = 35
 
     #HI-z params
     HIZ_COLS = 20   # Nombre de colonnes de tuiles

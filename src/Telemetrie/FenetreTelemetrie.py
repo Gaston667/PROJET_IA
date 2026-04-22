@@ -11,7 +11,7 @@ from src.Composant.Vitesse import Vitesse
 from src.Config import Config
 from src.Monde.Monde import Monde
 from src.Outils.Profiler import Profiler
-from src.Rendu.Point3D import Point3D
+from .HistoriqueFPS import HistoriqueFPS
 
 
 def _fmt_ms(valeur: float) -> str:
@@ -30,6 +30,8 @@ class FenetreTelemetrie:
         self.racine.configure(bg="#0f172a")
         self.racine.protocol("WM_DELETE_WINDOW", self.fermer)
         self._premier_affichage = True
+        self.stockage_fps = HistoriqueFPS()
+        self.historique_fps = self.stockage_fps.charger_fps()
 
         self.couleurs = {
             "fond": "#0f172a",
@@ -41,6 +43,7 @@ class FenetreTelemetrie:
             "vert": "#4ade80",
             "orange": "#fbbf24",
             "rouge": "#fb7185",
+            "grille": "#26344f",
         }
 
         self._configurer_style()
@@ -67,11 +70,27 @@ class FenetreTelemetrie:
             font=("Segoe UI", 10, "bold"),
         )
         style.map("Treeview", background=[("selected", self.couleurs["accent"])])
+        style.configure(
+            "TNotebook",
+            background=self.couleurs["fond"],
+            borderwidth=0,
+        )
+        style.configure(
+            "TNotebook.Tab",
+            background=self.couleurs["panneau"],
+            foreground=self.couleurs["texte"],
+            padding=(14, 8),
+            font=("Segoe UI", 10, "bold"),
+        )
+        style.map(
+            "TNotebook.Tab",
+            background=[("selected", self.couleurs["panneau2"])],
+            foreground=[("selected", self.couleurs["accent"])],
+        )
 
     def _construire_interface(self) -> None:
         self.racine.grid_columnconfigure(0, weight=1)
-        self.racine.grid_rowconfigure(2, weight=1)
-        self.racine.grid_rowconfigure(4, weight=1)
+        self.racine.grid_rowconfigure(1, weight=1)
 
         titre = tk.Label(
             self.racine,
@@ -85,8 +104,22 @@ class FenetreTelemetrie:
         )
         titre.grid(row=0, column=0, sticky="ew")
 
-        self.cartes = tk.Frame(self.racine, bg=self.couleurs["fond"])
-        self.cartes.grid(row=1, column=0, sticky="ew", padx=14)
+        self.onglets = ttk.Notebook(self.racine)
+        self.onglets.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
+
+        self.onglet_performance = tk.Frame(self.onglets, bg=self.couleurs["fond"])
+        self.onglet_details = tk.Frame(self.onglets, bg=self.couleurs["fond"])
+        self.onglets.add(self.onglet_performance, text="Performance")
+        self.onglets.add(self.onglet_details, text="Details")
+
+        self.onglet_performance.grid_columnconfigure(0, weight=1)
+        self.onglet_performance.grid_rowconfigure(1, weight=1)
+        self.onglet_performance.grid_rowconfigure(2, weight=1)
+        self.onglet_details.grid_columnconfigure(0, weight=1)
+        self.onglet_details.grid_rowconfigure(0, weight=1)
+
+        self.cartes = tk.Frame(self.onglet_performance, bg=self.couleurs["fond"])
+        self.cartes.grid(row=0, column=0, sticky="ew", padx=14, pady=(12, 0))
         for colonne in range(4):
             self.cartes.grid_columnconfigure(colonne, weight=1)
 
@@ -97,7 +130,7 @@ class FenetreTelemetrie:
         self._ajouter_carte("rendu", "RENDU MS", 3)
 
         self.tableau = ttk.Treeview(
-            self.racine,
+            self.onglet_performance,
             columns=("mesure", "dernier", "moyenne", "min", "max", "appels"),
             show="headings",
             height=12,
@@ -114,10 +147,24 @@ class FenetreTelemetrie:
         self.tableau.column("min", width=100, anchor="e")
         self.tableau.column("max", width=100, anchor="e")
         self.tableau.column("appels", width=90, anchor="e")
-        self.tableau.grid(row=2, column=0, sticky="nsew", padx=14, pady=(12, 8))
+        self.tableau.grid(row=1, column=0, sticky="nsew", padx=14, pady=(12, 8))
 
-        self.zone_infos = tk.Frame(self.racine, bg=self.couleurs["panneau"])
-        self.zone_infos.grid(row=4, column=0, sticky="nsew", padx=14, pady=(8, 14))
+        self.zone_graphique = tk.Frame(self.onglet_performance, bg=self.couleurs["panneau"])
+        self.zone_graphique.grid(row=2, column=0, sticky="nsew", padx=14, pady=(0, 12))
+        self.zone_graphique.grid_columnconfigure(0, weight=1)
+        self.zone_graphique.grid_rowconfigure(0, weight=1)
+
+        self.graphique_fps = tk.Canvas(
+            self.zone_graphique,
+            bg=self.couleurs["panneau"],
+            height=240,
+            highlightthickness=0,
+            bd=0,
+        )
+        self.graphique_fps.grid(row=0, column=0, sticky="nsew")
+
+        self.zone_infos = tk.Frame(self.onglet_details, bg=self.couleurs["panneau"])
+        self.zone_infos.grid(row=0, column=0, sticky="nsew", padx=14, pady=14)
         self.zone_infos.grid_columnconfigure(0, weight=1)
         self.zone_infos.grid_rowconfigure(0, weight=1)
 
@@ -186,7 +233,8 @@ class FenetreTelemetrie:
         self.profiler = profiler_actif
 
         try:
-            self._mettre_a_jour_cartes(monde, rendu, profiler_actif)
+            fps = self._mettre_a_jour_cartes(monde, rendu, profiler_actif)
+            self._mettre_a_jour_graphique_fps(fps)
             self._mettre_a_jour_tableau(profiler_actif)
             self._mettre_a_jour_infos(monde, rendu, profiler_actif)
             if self._premier_affichage:
@@ -210,7 +258,7 @@ class FenetreTelemetrie:
         monde: Monde,
         rendu: object,
         profiler: Profiler | None,
-    ) -> None:
+    ) -> float:
         fps = rendu.clock.get_fps() if getattr(rendu, "clock", None) is not None else 0.0
         frame_ms = 0.0
         physique_ms = 0.0
@@ -233,6 +281,120 @@ class FenetreTelemetrie:
         self.labels_cartes["frame"].configure(text=f"{frame_ms:.3f}")
         self.labels_cartes["physique"].configure(text=f"{physique_ms:.3f}")
         self.labels_cartes["rendu"].configure(text=f"{rendu_ms:.3f}")
+        return fps
+
+    def _mettre_a_jour_graphique_fps(self, fps: float) -> None:
+        canvas = self.graphique_fps
+        canvas.delete("all")
+
+        largeur = max(1, canvas.winfo_width())
+        hauteur = max(1, canvas.winfo_height())
+        marge_gauche = 42
+        marge_droite = 12
+        marge_haut = 18
+        marge_bas = 24
+        zone_w = max(1, largeur - marge_gauche - marge_droite)
+        zone_h = max(1, hauteur - marge_haut - marge_bas)
+        valeurs = self.historique_fps
+        if valeurs:
+            fps_min = min(valeurs)
+            fps_max = max(valeurs)
+            amplitude = max(1.0, fps_max - fps_min)
+            marge_fps = max(0.5, amplitude * 0.2)
+            echelle_min = max(0.0, fps_min - marge_fps)
+            echelle_max = fps_max + marge_fps
+        else:
+            echelle_min = 0.0
+            echelle_max = 60.0
+        echelle = max(1.0, echelle_max - echelle_min)
+
+        canvas.create_text(
+            12,
+            8,
+            text="FPS MOYEN EXECUTIONS",
+            fill=self.couleurs["texte"],
+            anchor="nw",
+            font=("Segoe UI", 9, "bold"),
+        )
+        canvas.create_line(
+            marge_gauche,
+            marge_haut,
+            marge_gauche,
+            marge_haut + zone_h,
+            fill=self.couleurs["grille"],
+        )
+        canvas.create_line(
+            marge_gauche,
+            marge_haut + zone_h,
+            marge_gauche + zone_w,
+            marge_haut + zone_h,
+            fill=self.couleurs["grille"],
+        )
+
+        for valeur in (echelle_min, (echelle_min + echelle_max) / 2, echelle_max):
+            y = marge_haut + zone_h - ((valeur - echelle_min) / echelle) * zone_h
+            canvas.create_line(marge_gauche, y, marge_gauche + zone_w, y, fill=self.couleurs["grille"], dash=(3, 5))
+            canvas.create_text(
+                marge_gauche - 8,
+                y,
+                text=f"{valeur:.1f}",
+                fill=self.couleurs["muted"],
+                anchor="e",
+                font=("Consolas", 8),
+            )
+
+        if not valeurs:
+            canvas.create_text(
+                marge_gauche + zone_w / 2,
+                marge_haut + zone_h / 2,
+                text="Aucune execution sauvegardee",
+                fill=self.couleurs["muted"],
+                anchor="center",
+                font=("Segoe UI", 10),
+            )
+            return
+
+        if len(valeurs) < 2:
+            valeur = valeurs[-1]
+            y = marge_haut + zone_h - ((valeur - echelle_min) / echelle) * zone_h
+            canvas.create_oval(
+                marge_gauche + zone_w - 3,
+                y - 3,
+                marge_gauche + zone_w + 3,
+                y + 3,
+                fill=self._couleur_fps(valeur),
+                outline="",
+            )
+            return
+
+        points = []
+        total = len(valeurs)
+        for index, valeur in enumerate(valeurs):
+            x = marge_gauche + (index / max(1, total - 1)) * zone_w
+            y = marge_haut + zone_h - ((valeur - echelle_min) / echelle) * zone_h
+            points.extend((x, y))
+
+        dernier = valeurs[-1]
+        precedent = valeurs[-2]
+        variation = dernier - precedent
+        variation_texte = f"{variation:+.2f}"
+        canvas.create_line(points, fill=self._couleur_fps(dernier), width=2, smooth=True)
+        canvas.create_text(
+            largeur - marge_droite,
+            marge_haut,
+            text=f"{dernier:.1f} FPS  {variation_texte}",
+            fill=self._couleur_fps(dernier),
+            anchor="ne",
+            font=("Consolas", 12, "bold"),
+        )
+        canvas.create_text(
+            largeur - marge_droite,
+            marge_haut + zone_h + 8,
+            text=f"{len(valeurs)} executions",
+            fill=self.couleurs["muted"],
+            anchor="ne",
+            font=("Segoe UI", 8),
+        )
 
     def _mettre_a_jour_tableau(self, profiler: Profiler | None) -> None:
         self.tableau.delete(*self.tableau.get_children())
@@ -326,8 +488,7 @@ class FenetreTelemetrie:
 
         lignes = [f"Entite {entite.id}"]
         if position is not None:
-            point = Point3D(position.x, position.y, position.z)
-            lignes.append(f"  Pos           x={point.x:.2f} y={point.y:.2f} z={point.z:.2f}")
+            lignes.append(f"  Pos           x={position.x:.2f} y={position.y:.2f} z={position.z:.2f}")
         else:
             lignes.append("  Pos           n/a")
 
