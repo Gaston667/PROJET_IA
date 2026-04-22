@@ -26,16 +26,10 @@ from src.Monde.Monde import Monde
 from src.Outils.Profiler import Profiler
 from src.Rendu.Render3D import Render3D
 from src.Rendu.SystemeRendu import SystemeRendu
-from src.Systeme import (
-    SystemePhysique_Aerodynamique,
-    SystemePhysique_Collision,
-    SystemePhysique_Electromagnetique,
-    SystemePhysique_Gravite,
-    SystemePhysique_Mouvement,
-    SystemePhysique_Propulsion,
-)
+from src.Systeme import SystemePhysique_Collision, SystemePhysique_Mouvement
+from src.Systeme.SystemePhysique_Gravite import SystemePhysique_Gravite
 from src.Telemetrie import FenetreTelemetrie, HistoriqueFPS
-from src.blueprints.BlueprintBoule import BlueprintBoule
+from src.blueprints.Blueprintanceur import BlueprintLanceur
 from src.blueprints.BlueprintSol import BlueprintSol
 
 
@@ -56,39 +50,55 @@ from src.blueprints.BlueprintSol import BlueprintSol
 # =============================================================================
 
 
-def creer_boule() -> Entite:
-    bp = BlueprintBoule
+def creer_lanceur() -> Entite:
+    """
+    Crée un lanceur de missile.
+    
+    Véhicule lourd blindé avec tourelle.
+    Propriétés :
+      - Masse importante (stabilité)
+      - Friction élevée (simulation chenilles/chenilles)
+      - Peu de rebond (construction rigide)
+    """
+    bp = BlueprintLanceur
     entite = Entite()
+    
+    # Position et transformation
     position = Position(bp.POSITION_X, bp.POSITION_Y, bp.POSITION_Z)
+    
+    # Renderable - Polygone 3D du corps
     renderable = Renderable(
         couleur=bp.COULEUR,
         visible=True,
-        forme=bp.FORME,
-        rayon=bp.RAYON,
-        segments=bp.SEGMENTS,
-        anneaux=bp.ANNEAUX,
+        forme=Renderable.FORME_POLYGONE,
     )
+    renderable.points = bp.POINTS
+    
+    # Composants physiques
     masse = Masse(bp.MASSE)
     materiau = Materiau(bp.RESTITUTION, bp.FRICTION)
     vitesse = Vitesse(bp.VITESSE_X, bp.VITESSE_Y, bp.VITESSE_Z)
     force = Force(bp.FORCE_X, bp.FORCE_Y, bp.FORCE_Z)
-
+    
+    # Construction de l'entité
     entite.ajouter_composant(position)
     entite.ajouter_composant(renderable)
     entite.ajouter_composant(masse)
     entite.ajouter_composant(materiau)
     entite.ajouter_composant(vitesse)
     entite.ajouter_composant(force)
-
+    
+    # Raccourcis pour accès facile
     entite.position = position
     entite.renderable = renderable
     entite.masse = masse
     entite.materiau = materiau
     entite.vitesse = vitesse
     entite.force = force
-    entite.tag = bp.TAG
-
+    
     return entite
+
+
 
 
 
@@ -126,11 +136,9 @@ def creer_plan() -> Entite:
 
     return plan
 
-
 def creer_scene_test_occlusion(monde: Monde) -> None:
     monde.ajouter_entite(creer_plan())
-    monde.ajouter_entite(creer_boule())
-
+    monde.ajouter_entite(creer_lanceur())
 
 # =============================================================================
 # BOUCLE PRINCIPALE
@@ -161,12 +169,9 @@ def main() -> None:
     creer_scene_test_occlusion(monde)
 
     # Ajout des systèmes physiques (exécutés dans cet ordre à chaque step)
-    monde.ajouter_systeme(SystemePhysique_Electromagnetique())
-    monde.ajouter_systeme(SystemePhysique_Aerodynamique())
-    monde.ajouter_systeme(SystemePhysique_Propulsion())
     monde.ajouter_systeme(SystemePhysique_Gravite())
+    monde.ajouter_systeme(SystemePhysique_Collision()) 
     monde.ajouter_systeme(SystemePhysique_Mouvement())
-    monde.ajouter_systeme(SystemePhysique_Collision())
 
     # --- Initialisation des modules ---
     simulation    = Simulation(monde)

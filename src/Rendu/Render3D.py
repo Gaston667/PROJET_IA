@@ -103,6 +103,7 @@ class Render3D(Render):
 
         self.vitesse_camera = 12.0
         self.vitesse_camera_rapide = 17.0
+        self.hauteur_min_camera = 1.0
         self.sensibilite_souris = 0.12
         self.souris_capturee = False
 
@@ -327,6 +328,8 @@ class Render3D(Render):
 
         if dx != 0.0 or dy != 0.0 or dz != 0.0:
             self.camera.deplacer(dx, dy, dz)
+            if self.camera.position.y < self.hauteur_min_camera:
+                self.camera.position.y = self.hauteur_min_camera
 
     # =========================================================================
     # SECTION 3 — Projection et géométrie 3D
